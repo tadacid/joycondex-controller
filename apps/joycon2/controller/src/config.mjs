@@ -155,11 +155,11 @@ export function validateEditableMouse(value) {
     throw new Error("mouseにはenabled、sensorSensitivity、stickSpeedを指定してください");
   }
   if (typeof value.enabled !== "boolean") throw new Error("mouse.enabledは真偽値で指定してください");
-  if (!Number.isFinite(value.sensorSensitivity) || value.sensorSensitivity < 0.1 || value.sensorSensitivity > 0.8) {
-    throw new Error("机上マウス速度は0.1〜0.8で指定してください");
+  if (!Number.isFinite(value.sensorSensitivity) || value.sensorSensitivity < 0.1 || value.sensorSensitivity > 1.6) {
+    throw new Error("机上マウス速度は0.1〜1.6で指定してください");
   }
-  if (!Number.isFinite(value.stickSpeed) || value.stickSpeed < 14 || value.stickSpeed > 108) {
-    throw new Error("Stick速度は14〜108で指定してください");
+  if (!Number.isFinite(value.stickSpeed) || value.stickSpeed < 14 || value.stickSpeed > 216) {
+    throw new Error("Stick速度は14〜216で指定してください");
   }
   return {
     enabled: value.enabled,

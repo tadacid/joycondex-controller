@@ -593,7 +593,7 @@ export class ControllerStateMachine {
     if (Math.abs(dy) <= deadzone) dy = 0;
     if (dx === 0 && dy === 0) return;
 
-    const sensitivity = this.config.mouse?.sensorSensitivity ?? 0.2;
+    const sensitivity = this.config.mouse?.sensorSensitivity ?? 0.4;
     const smoothing = this.config.mouse?.sensorSmoothing ?? 0.35;
     this.filteredMouseDelta.x = smoothing * dx * sensitivity + (1 - smoothing) * this.filteredMouseDelta.x;
     this.filteredMouseDelta.y = smoothing * dy * sensitivity + (1 - smoothing) * this.filteredMouseDelta.y;
@@ -606,7 +606,7 @@ export class ControllerStateMachine {
 
   #handleStickPointer() {
     const deadzone = this.config.mouse?.stickDeadzone ?? 0.2;
-    const speed = this.config.mouse?.stickSpeed ?? 18;
+    const speed = this.config.mouse?.stickSpeed ?? 54;
     const curve = (value) => {
       const magnitude = Math.abs(value);
       if (magnitude <= deadzone) return 0;
