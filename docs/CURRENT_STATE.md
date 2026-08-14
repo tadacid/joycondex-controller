@@ -49,7 +49,7 @@ Joy-Con 2版のV0は、既存Bridgeの横に安全制御付きControllerを追�
 
 Controllerの自動テストは現在49件あり、全件Pass確認済み。
 
-Mac上の`START_JOYCON_DRY_RUN.command`でBridgeとControllerの起動、SSE接続、設定画面表示を確認済みです。確認時はJoy-Con 2が未接続で、Bridgeは`scanning / devices: 0`でした。
+Mac上のLIVE実行でJoy-Con 2の検出・接続、VoiceKey開始／停止、A送信、B長押しクリア、HOME/C移動、SR/SL推論変更、持ち上げ時ZRのメイン／サイド入力欄切替まで操作ログを確認済みです。整理版への最終再起動後はControllerとBridgeが正常起動し、個人設定（机上速度0.4、Stick速度108）も維持されています。再起動直後はJoy-Conがスリープ中でBridgeは`scanning / devices: 0`でした。
 
 再編後もルートで:
 
@@ -61,12 +61,9 @@ npm test
 
 ## 未確認
 
-Joy-Con 2実機を接続して、以下を要確認:
+Joy-Con 2実機で、以下を最終確認:
 
-- VoiceKeyの実機開始・終了とCodexへの貼り付け
-- Codex/ChatGPTのfrontmost process名
-- A送信の実挙動
-- Bの全文クリアがcomposerだけへ作用するか
-- 前後チャットショートカットがユーザー環境と一致するか
-- Accessibility / Automation権限
-- センサーマウスの向き・感度と、持ち上げ時Stickマウスの感度
+- X長押しが最新メッセージ移動として実用上十分か
+- 机上／持ち上げ境界でZRが誤クリックしないか
+- VoiceKey録音中の実切断で停止が確実に働くか
+- 数日使用した時の再接続と速度設定の安定性
