@@ -1,0 +1,13 @@
+{
+  "name": "joycon2-bridge",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "zsh build.sh",
+    "start": "zsh build.sh && node server.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

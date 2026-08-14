@@ -1,0 +1,8 @@
+.DS_Store
+node_modules/
+*.log
+.env
+.env.*
+.playwright-mcp/
+**/native/build/
+apps/joycon2/controller/config.json

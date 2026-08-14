@@ -1,0 +1,52 @@
+{
+  "bridgeUrl": "http://127.0.0.1:8787/events",
+  "uiHost": "127.0.0.1",
+  "uiPort": 8788,
+  "deviceSide": "right",
+  "targetAppNames": [
+    "Codex",
+    "ChatGPT"
+  ],
+  "masterHoldMs": 800,
+  "watchdogMs": 2200,
+  "stickTrigger": 0.68,
+  "stickRelease": 0.34,
+  "actionCooldownMs": 140,
+  "focusDelayMs": 220,
+  "minimumTalkMs": 250,
+  "escapeHoldMs": 700,
+  "reasonRepeatDelayMs": 420,
+  "reasonRepeatIntervalMs": 180,
+  "dictationSettleMs": 1000,
+  "voiceKeyUrl": "http://127.0.0.1:47321",
+  "voiceKeyCommandTimeoutMs": 1000,
+  "draftExpiryMs": 30000,
+  "actionRequiresDraft": false,
+  "mouse": {
+    "enabled": true,
+    "surfaceDistanceMax": 500,
+    "surfaceReleaseDistance": 650,
+    "sensorSensitivity": 0.4,
+    "sensorSmoothing": 0.35,
+    "sensorDeadzone": 2,
+    "sensorJumpThreshold": 1200,
+    "stickDeadzone": 0.2,
+    "stickSpeed": 54
+  },
+  "bindings": {
+    "talk": ["r"],
+    "voiceChat": ["plus"],
+    "action": ["a"],
+    "cancel": ["b"],
+    "newChat": ["y"],
+    "focus": [],
+    "escape": ["x"],
+    "taskUp": ["home"],
+    "taskDown": ["chat"],
+    "reasonUp": ["railRightSr"],
+    "reasonDown": ["railRightSl"],
+    "contextPrimary": ["zr"],
+    "mouseClick": ["stickRight"],
+    "master": "plus"
+  }
+}

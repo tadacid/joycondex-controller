@@ -1,0 +1,15 @@
+{
+  "name": "codex-grip",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Joy-Con 2 PoC and future M5Stack handheld controller for Codex",
+  "scripts": {
+    "test": "npm --prefix apps/joycon2/controller test",
+    "joycon:bridge": "npm --prefix apps/joycon2/bridge run start",
+    "joycon:controller": "npm --prefix apps/joycon2/controller run start",
+    "joycon:controller:dry": "npm --prefix apps/joycon2/controller run start:dry"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

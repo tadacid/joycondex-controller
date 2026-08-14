@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="icon" href="data:," />
+  <title>Joy-Con 2 → Codex Controller</title>
+  <style>
+    :root { color-scheme: dark; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #111315; color: #eef1f4; }
+    main { max-width: 980px; margin: 0 auto; padding: 28px 20px 60px; }
+    h1 { font-size: 24px; margin: 0 0 6px; }
+    .sub { color: #8e9aa5; margin-bottom: 22px; }
+    .grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 14px; }
+    .card { grid-column: span 4; background: #191d21; border: 1px solid #2d343b; border-radius: 14px; padding: 16px; }
+    .wide { grid-column: span 8; }
+    .full { grid-column: 1 / -1; }
+    .label { color: #89949e; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; }
+    .value { font-size: 19px; font-weight: 650; margin-top: 6px; }
+    .good { color: #63db94; } .warn { color: #f4c45e; } .bad { color: #ff7777; }
+    .buttons { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
+    .key { min-height: 62px; border: 1px solid #343c44; border-radius: 10px; padding: 10px; background: #20252a; }
+    .key.active { background: #285d45; border-color: #5ee29b; transform: translateY(1px); }
+    .key strong { display: block; font-size: 14px; }
+    .key span { display: block; color: #8d99a3; font-size: 11px; margin-top: 5px; }
+    .stick { height: 150px; display: grid; place-items: center; position: relative; border: 1px solid #30373e; border-radius: 14px; background: radial-gradient(circle, #22282d 0 30%, #171b1f 31%); }
+    .dot { width: 24px; height: 24px; border-radius: 50%; background: #72a6ff; box-shadow: 0 0 20px #72a6ff88; transform: translate(var(--x), var(--y)); transition: transform 40ms linear; }
+    button { min-height: 44px; border: 0; border-radius: 9px; padding: 11px 16px; font-weight: 700; cursor: pointer; }
+    #arm { background: #57c98b; color: #09140e; } #disarm { background: #d75858; color: white; }
+    button:disabled { opacity: .45; cursor: default; }
+    .connect-button { width: 100%; margin-top: 12px; background: #72a6ff; color: #09111c; }
+    .connect-note { min-height: 30px; margin: 8px 0 0; color: #8e9aa5; font-size: 11px; line-height: 1.35; }
+    .controls { display: flex; gap: 10px; margin-top: 14px; }
+    .settings-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: 12px; }
+    .setting label { display: block; color: #89949e; font-size: 12px; margin-bottom: 6px; }
+    select { width: 100%; min-height: 44px; border: 1px solid #343c44; border-radius: 9px; padding: 10px; background: #20252a; color: #eef1f4; }
+    button:focus-visible, select:focus-visible, input:focus-visible { outline: 3px solid #a9c8ff; outline-offset: 2px; }
+    #saveSettings { background: #72a6ff; color: #09111c; }
+    .setting-note { color: #8e9aa5; font-size: 13px; margin: 10px 0 0; }
+    .toggle-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 12px; padding: 12px; background: #20252a; border: 1px solid #303840; border-radius: 10px; }
+    .toggle-row input { width: 22px; height: 22px; accent-color: #72a6ff; }
+    .speed-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 10px; }
+    .speed-control { display: block; padding: 12px; background: #20252a; border: 1px solid #303840; border-radius: 10px; }
+    .speed-heading { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; }
+    .speed-heading output { color: #a9c8ff; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .speed-control input { width: 100%; margin: 12px 0 2px; accent-color: #72a6ff; }
+    .speed-scale { display: flex; justify-content: space-between; color: #75818c; font-size: 10px; }
+    .sensor-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 12px; }
+    .sensor { padding: 12px; background: #20252a; border: 1px solid #303840; border-radius: 10px; }
+    .sensor span { display: block; color: #89949e; font-size: 11px; margin-bottom: 7px; }
+    .sensor strong { font-size: 14px; font-weight: 650; font-variant-numeric: tabular-nums; }
+    .motion-meter { height: 7px; overflow: hidden; margin-top: 9px; border-radius: 999px; background: #111519; }
+    .motion-meter div { height: 100%; width: var(--motion); background: #72a6ff; transition: width 80ms linear; }
+    .sensor-meta { display: flex; flex-wrap: wrap; gap: 10px 24px; margin: 12px 0 0; color: #8e9aa5; font-size: 12px; }
+    .logs { height: 270px; overflow: auto; background: #0d0f11; border-radius: 10px; padding: 10px 12px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; line-height: 1.55; }
+    .log-error { color: #ff8585; } .log-blocked { color: #f3c76a; } .log-action { color: #74dca0; } .log-dry { color: #83b7ff; }
+    code { color: #a9c8ff; }
+    @media (max-width: 760px) { .card, .wide { grid-column: 1 / -1; } .buttons { grid-template-columns: repeat(3, 1fr); } .settings-grid { grid-template-columns: repeat(2, 1fr); } .speed-grid, .sensor-grid { grid-template-columns: 1fr; } }
+    @media (prefers-reduced-motion: reduce) { .dot, .motion-meter div { transition: none; } }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Joy-Con 2 → Codex Controller</h1>
+  <div class="sub">V0安全試作。＋を0.8秒長押しすると操作を有効／停止できます。</div>
+  <section class="grid">
+    <div class="card"><div class="label">Bridge</div><div id="bridge" class="value">確認中</div></div>
+    <div class="card">
+      <div class="label">Joy-Con 2 (R)</div><div id="joycon" class="value">確認中</div>
+      <button id="connectJoycon" class="connect-button">Joy-Conを接続</button>
+      <p id="connectInfo" class="connect-note">右Joy-ConのSYNCボタンを長押ししてから押します。</p>
+    </div>
+    <div class="card"><div class="label">Control</div><div id="armed" class="value">停止</div></div>
+    <div class="card"><div class="label">Neutral gate</div><div id="neutral" class="value">待機</div></div>
+    <div class="card"><div class="label">Frontmost app</div><div id="frontmost" class="value">不明</div></div>
+    <div class="card"><div class="label">Draft</div><div id="draft" class="value">なし</div></div>
+
+    <div class="card wide">
+      <div class="label">Buttons</div>
+      <div id="buttons" class="buttons"></div>
+      <div class="controls">
+        <button id="arm">UIから有効化</button>
+        <button id="disarm">即時停止</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="label">Stick</div>
+      <div class="stick"><div id="dot" class="dot"></div></div>
+      <div id="stickText" class="value">x 0.00 / y 0.00</div>
+      <div id="mouseMode" class="setting-note">マウス: 確認中</div>
+    </div>
+
+    <div class="card full">
+      <div class="label">Sensors</div>
+      <div class="sensor-grid">
+        <div class="sensor"><span>加速度（g）</span><strong id="acceleration">x — / y — / z —</strong></div>
+        <div class="sensor"><span>ジャイロ（生値）</span><strong id="gyroscope">x — / y — / z —</strong></div>
+        <div class="sensor"><span>向き（推定ベクトル）</span><strong id="direction">x — / y — / z —</strong></div>
+        <div class="sensor">
+          <span>動きの強さ（0〜1）</span><strong id="motionPower">—</strong>
+          <div class="motion-meter"><div id="motionBar"></div></div>
+        </div>
+        <div class="sensor"><span>マウスセンサー位置</span><strong id="mousePosition">x — / y —</strong></div>
+        <div class="sensor"><span>マウス表面品質 / LOD</span><strong id="mouseSurface">SQUAL — / LOD —</strong></div>
+        <div class="sensor"><span>IMU温度（生値）</span><strong id="imuTemperature">—</strong></div>
+        <div class="sensor"><span>バッテリー</span><strong id="battery">— V / — mA / 状態 —</strong></div>
+        <div class="sensor"><span>入力パケット</span><strong id="packetId">—</strong></div>
+      </div>
+      <p class="sensor-meta"><span id="sensorUpdated">最終受信 —</span><span>Stickとボタン状態は上の欄に表示</span></p>
+    </div>
+
+    <div class="card full">
+      <div class="label">Last action / state</div>
+      <div id="last" class="value">なし</div>
+      <p id="reason" class="sub"></p>
+    </div>
+    <div class="card full">
+      <div class="label">Button / Mouse settings</div>
+      <label class="toggle-row" for="mouseEnabled">
+        <span><strong>マウス操作（Stick・机上センサー共通）</strong><br><small>OFFにすると両方ともカーソルが停止します</small></span>
+        <input id="mouseEnabled" type="checkbox" />
+      </label>
+      <div class="speed-grid">
+        <label class="speed-control" for="stickSpeed">
+          <span class="speed-heading"><strong>Stickカーソル速度</strong><output id="stickSpeedValue">1.00×</output></span>
+          <input id="stickSpeed" data-mouse-speed type="range" min="14" max="108" step="1" value="54" />
+          <span class="speed-scale"><span>ゆっくり</span><span>標準</span><span>速い</span></span>
+        </label>
+        <label class="speed-control" for="sensorSensitivity">
+          <span class="speed-heading"><strong>机上マウス速度</strong><output id="sensorSensitivityValue">1.00×</output></span>
+          <input id="sensorSensitivity" data-mouse-speed type="range" min="0.1" max="0.8" step="0.05" value="0.4" />
+          <span class="speed-scale"><span>ゆっくり</span><span>標準</span><span>速い</span></span>
+        </label>
+      </div>
+      <div id="settingsGrid" class="settings-grid"></div>
+      <div class="controls"><button id="saveSettings" disabled>設定を保存</button></div>
+      <p id="settingsInfo" class="setting-note">読み込み中。複数のボタンに同じ機能を設定できます。</p>
+    </div>
+    <div class="card full">
+      <div class="label">Log</div>
+      <div id="logs" class="logs"></div>
+    </div>
+  </section>
+</main>
+<script>
+const names = ["zr", "a", "b", "x", "y", "plus", "r", "chat", "home", "stickRight", "railRightSl", "railRightSr"];
+const buttonLabels = { chat:"C", home:"HOME", stickRight:"STICK", railRightSl:"SL", railRightSr:"SR" };
+const roleLabels = { talk:"音声入力", voiceChat:"ボイスモード", action:"送信 / 承認", cancel:"DELETE", newChat:"新規", focus:"前面化", escape:"Escape / 戻る", taskUp:"タスク選択 上", taskDown:"タスク選択 下", reasonUp:"推論レベル 上", reasonDown:"推論レベル 下", contextPrimary:"入力欄切替 / 机上クリック", mouseClick:"マウスクリック", master:"MASTER長押し" };
+const settingKeys = ["talk", "voiceChat", "action", "cancel", "newChat", "focus", "escape", "taskUp", "taskDown", "reasonUp", "reasonDown", "contextPrimary", "mouseClick"];
+let settingsDirty = false;
+let settingsLoaded = false;
+let latestPayload = null;
+let renderedLogVersion = "";
+const buttonsEl = document.querySelector("#buttons");
+for (const name of names) {
+  const el = document.createElement("div");
+  el.className = "key"; el.dataset.key = name;
+  el.innerHTML = `<strong>${buttonLabels[name] ?? name.toUpperCase()}</strong><span data-role>未割当</span>`;
+  buttonsEl.append(el);
+}
+function stateClass(ok, warning=false) { return ok ? "value good" : warning ? "value warn" : "value bad"; }
+function formatTime(ms) { return ms ? new Date(ms).toLocaleTimeString("ja-JP", { hour12:false }) : ""; }
+function vectorText(vector, digits) {
+  const number = key => Number.isFinite(vector?.[key]) ? Number(vector[key]).toFixed(digits) : "—";
+  return `x ${number("x")} / y ${number("y")} / z ${number("z")}`;
+}
+function render(payload) {
+  latestPayload = payload;
+  const s = payload.state; const c = payload.controller;
+  const bridge = document.querySelector("#bridge"); bridge.textContent = s.bridgeConnected ? "接続" : "切断"; bridge.className = stateClass(s.bridgeConnected);
+  const joy = document.querySelector("#joycon"); joy.textContent = s.joyconConnected ? "接続" : "未接続"; joy.className = stateClass(s.joyconConnected);
+  const connecting = c.bridgeLaunch?.phase === "starting";
+  const connectButton = document.querySelector("#connectJoycon");
+  connectButton.disabled = s.joyconConnected || connecting;
+  connectButton.textContent = s.joyconConnected ? "接続済み" : connecting ? "起動中…" : s.bridgeConnected ? "接続を待つ" : "Joy-Conを接続";
+  const armed = document.querySelector("#armed"); armed.textContent = s.armed ? "ARMED" : "DISABLED"; armed.className = stateClass(s.armed, !s.armed);
+  const neutral = document.querySelector("#neutral"); neutral.textContent = s.neutralReady ? "READY" : "全入力を離す"; neutral.className = stateClass(s.neutralReady, true);
+  document.querySelector("#frontmost").textContent = c.frontmostApp ?? "不明";
+  const draft = document.querySelector("#draft"); draft.textContent = s.talkActive ? "録音中" : s.draftArmed ? "送信可能" : "なし"; draft.className = stateClass(s.draftArmed || s.talkActive, false);
+  const assignedRoles = {};
+  for (const [role, buttons] of Object.entries(c.bindings ?? {})) {
+    for (const button of Array.isArray(buttons) ? buttons : [buttons]) {
+      assignedRoles[button] ??= [];
+      assignedRoles[button].push(roleLabels[role] ?? role);
+    }
+  }
+  for (const name of names) {
+    const button = document.querySelector(`[data-key="${name}"]`);
+    button?.classList.toggle("active", Boolean(s.buttons?.[name]));
+    const role = button?.querySelector("[data-role]");
+    if (role) role.textContent = assignedRoles[name]?.join(" / ") ?? "未割当";
+  }
+  const x = Number(s.stick?.x ?? 0), y = Number(s.stick?.y ?? 0);
+  document.querySelector("#dot").style.cssText = `--x:${x*48}px;--y:${y*48}px`;
+  document.querySelector("#stickText").textContent = `x ${x.toFixed(2)} / y ${y.toFixed(2)}`;
+  const mouseControl = s.mouseControl ?? {};
+  const mouseModeText = !mouseControl.enabled ? "OFF" : mouseControl.source === "sensor" ? "SENSOR（机上）" : "STICK（持ち上げ）";
+  document.querySelector("#mouseMode").textContent = `マウス: ${mouseModeText}${s.armed ? "" : " / DISABLED"}`;
+  const sensors = s.sensors ?? {};
+  document.querySelector("#acceleration").textContent = vectorText(sensors.acceleration, 3);
+  document.querySelector("#gyroscope").textContent = vectorText(sensors.gyroscope, 0);
+  document.querySelector("#direction").textContent = vectorText(sensors.direction, 3);
+  const mouse = sensors.mouse ?? {};
+  document.querySelector("#mousePosition").textContent = `x ${Number.isFinite(mouse.positionX) ? mouse.positionX : "—"} / y ${Number.isFinite(mouse.positionY) ? mouse.positionY : "—"}`;
+  document.querySelector("#mouseSurface").textContent = `SQUAL ${Number.isFinite(mouse.surfaceQuality) ? mouse.surfaceQuality : "—"} / LOD ${Number.isFinite(mouse.liftOffDistance) ? mouse.liftOffDistance : "—"}`;
+  document.querySelector("#imuTemperature").textContent = Number.isFinite(sensors.imuTemperatureRaw) ? String(sensors.imuTemperatureRaw) : "—";
+  const motionPower = Number.isFinite(sensors.motionPower) ? Math.max(0, Math.min(1, sensors.motionPower)) : null;
+  document.querySelector("#motionPower").textContent = motionPower === null ? "—" : motionPower.toFixed(3);
+  document.querySelector("#motionBar").style.setProperty("--motion", `${(motionPower ?? 0) * 100}%`);
+  const batteryVoltage = Number.isFinite(s.batteryVoltage) ? `${s.batteryVoltage.toFixed(3)} V` : "— V";
+  const batteryCurrent = Number.isFinite(sensors.batteryCurrentMilliamps) ? `${sensors.batteryCurrentMilliamps.toFixed(2)} mA` : "— mA";
+  const chargeStatus = Number.isInteger(sensors.chargeStatus) ? `0x${sensors.chargeStatus.toString(16).padStart(2, "0").toUpperCase()}` : "—";
+  document.querySelector("#battery").textContent = `${batteryVoltage} / ${batteryCurrent} / 状態 ${chargeStatus}`;
+  document.querySelector("#packetId").textContent = Number.isInteger(sensors.packetId) ? String(sensors.packetId) : "—";
+  document.querySelector("#sensorUpdated").textContent = `最終受信 ${sensors.receivedAt ? formatTime(sensors.receivedAt) : "—"}`;
+  document.querySelector("#last").textContent = s.lastAction ? `${s.lastAction.name}  ${formatTime(s.lastAction.at)}` : "なし";
+  document.querySelector("#reason").textContent = `${s.disabledReason ?? ""}${c.dryRun ? " / DRY RUN" : ""}`;
+  document.querySelector("#arm").disabled = s.armed || !s.bridgeConnected || !s.neutralReady || !s.joyconConnected || s.settingsUpdating;
+  document.querySelector("#disarm").disabled = !s.armed;
+  updateSettingsAvailability();
+  const logs = document.querySelector("#logs");
+  const latestLog = payload.logs.at(-1);
+  const logVersion = `${payload.logs.length}:${latestLog?.at ?? 0}:${latestLog?.message ?? ""}`;
+  if (logVersion !== renderedLogVersion) {
+    renderedLogVersion = logVersion;
+    logs.innerHTML = payload.logs.slice().reverse().map(log => `<div class="log-${log.level}">${formatTime(log.at)} [${log.level}] ${escapeHtml(log.message)}</div>`).join("");
+  }
+}
+function escapeHtml(value) { return String(value).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch])); }
+async function post(path) { const response = await fetch(path, { method:"POST" }); if (!response.ok) alert((await response.json()).message ?? "失敗"); }
+function updateSettingsAvailability() {
+  if (!latestPayload || !settingsLoaded) return;
+  const s = latestPayload.state, c = latestPayload.controller;
+  const canEdit = !s.armed && !s.talkActive && !s.settingsUpdating && !c.actionBusy;
+  for (const select of document.querySelectorAll("[data-button-binding]")) select.disabled = !canEdit;
+  document.querySelector("#mouseEnabled").disabled = !canEdit;
+  for (const slider of document.querySelectorAll("[data-mouse-speed]")) slider.disabled = !canEdit;
+  document.querySelector("#saveSettings").disabled = !canEdit || !settingsDirty;
+  if (!canEdit && settingsDirty) document.querySelector("#settingsInfo").textContent = "DISABLEDになってから保存してください。";
+}
+async function loadSettings() {
+  const response = await fetch("/api/settings", { cache:"no-store" });
+  const data = await response.json();
+  if (!response.ok || !data.ok) throw new Error(data.message ?? "設定を読み込めませんでした");
+  const assignments = {};
+  for (const [role, buttons] of Object.entries(data.bindings)) {
+    for (const button of Array.isArray(buttons) ? buttons : [buttons]) assignments[button] = role;
+  }
+  const options = data.functionOptions.map(option => `<option value="${escapeHtml(option.value)}">${escapeHtml(option.label)}</option>`).join("");
+  document.querySelector("#settingsGrid").innerHTML = data.buttonOptions.map(button => `
+    <div class="setting">
+      <label for="binding-${escapeHtml(button.value)}">${escapeHtml(button.label)}</label>
+      <select id="binding-${escapeHtml(button.value)}" data-button-binding="${escapeHtml(button.value)}">${options}</select>
+    </div>`).join("");
+  for (const select of document.querySelectorAll("[data-button-binding]")) {
+    select.value = assignments[select.dataset.buttonBinding] ?? "";
+    select.addEventListener("change", () => {
+      settingsDirty = true;
+      document.querySelector("#settingsInfo").textContent = "未保存の変更があります。";
+      updateSettingsAvailability();
+    });
+  }
+  const mouseEnabled = document.querySelector("#mouseEnabled");
+  mouseEnabled.checked = Boolean(data.mouse?.enabled);
+  mouseEnabled.addEventListener("change", () => {
+    settingsDirty = true;
+    document.querySelector("#settingsInfo").textContent = "未保存の変更があります。";
+    updateSettingsAvailability();
+  });
+  const speedControls = [
+    { input:"#stickSpeed", output:"#stickSpeedValue", value:data.mouse?.stickSpeed ?? 54, baseline:54 },
+    { input:"#sensorSensitivity", output:"#sensorSensitivityValue", value:data.mouse?.sensorSensitivity ?? 0.4, baseline:0.4 }
+  ];
+  for (const control of speedControls) {
+    const input = document.querySelector(control.input);
+    const output = document.querySelector(control.output);
+    input.value = control.value;
+    const refresh = () => { output.value = `${(Number(input.value) / control.baseline).toFixed(2)}×`; };
+    refresh();
+    input.addEventListener("input", () => {
+      refresh();
+      mouseEnabled.checked = true;
+      settingsDirty = true;
+      document.querySelector("#settingsInfo").textContent = "速度変更に合わせてマウス操作をONにしました。未保存です。";
+      updateSettingsAvailability();
+    });
+  }
+  settingsDirty = false;
+  settingsLoaded = true;
+  document.querySelector("#settingsInfo").textContent = "＋短押しはボイスモード、＋長押しはMASTERです。同じ機能を複数ボタンに設定できます。";
+  updateSettingsAvailability();
+}
+document.querySelector("#saveSettings").onclick = async () => {
+  const bindings = Object.fromEntries(settingKeys.map(key => [key, []]));
+  for (const select of document.querySelectorAll("[data-button-binding]")) {
+    if (select.value) bindings[select.value].push(select.dataset.buttonBinding);
+  }
+  const info = document.querySelector("#settingsInfo");
+  info.textContent = "保存中…";
+  try {
+    const response = await fetch("/api/settings", {
+      method:"PUT",
+      headers:{ "Content-Type":"application/json" },
+      body:JSON.stringify({
+        bindings,
+        mouse:{
+          enabled:document.querySelector("#mouseEnabled").checked,
+          stickSpeed:Number(document.querySelector("#stickSpeed").value),
+          sensorSensitivity:Number(document.querySelector("#sensorSensitivity").value)
+        }
+      })
+    });
+    const result = await response.json();
+    if (!response.ok || !result.ok) throw new Error(result.message ?? "保存できませんでした");
+    settingsDirty = false;
+    info.textContent = "保存しました。全ボタンを離してから＋長押しで有効化してください。";
+  } catch (error) {
+    info.textContent = error.message;
+  }
+  updateSettingsAvailability();
+};
+document.querySelector("#arm").onclick = () => post("/api/arm");
+document.querySelector("#disarm").onclick = () => post("/api/disarm");
+document.querySelector("#connectJoycon").onclick = async () => {
+  const button = document.querySelector("#connectJoycon");
+  const info = document.querySelector("#connectInfo");
+  button.disabled = true;
+  button.textContent = "起動中…";
+  info.textContent = "接続役を確認しています…";
+  try {
+    const response = await fetch("/api/connect-joycon", { method:"POST" });
+    const result = await response.json();
+    if (!response.ok || !result.ok) throw new Error(result.message ?? "接続を開始できませんでした");
+    info.textContent = result.message;
+  } catch (error) {
+    info.textContent = error.message;
+  } finally {
+    if (!latestPayload?.state?.joyconConnected) button.disabled = false;
+  }
+};
+const source = new EventSource("/events");
+source.onmessage = event => render(JSON.parse(event.data));
+loadSettings().catch(error => { document.querySelector("#settingsInfo").textContent = error.message; });
+</script>
+</body>
+</html>
