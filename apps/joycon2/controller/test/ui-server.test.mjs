@@ -50,3 +50,44 @@ test("画面の接続ボタンからJoy-Con接続役を起動できる", async (
     await ui.stop();
   }
 });
+
+test("設定をJSONでバックアップし、復元APIへ渡せる", async () => {
+  const backup = {
+    schemaVersion: 1,
+    exportedAt: "2026-08-14T00:00:00.000Z",
+    bindings: { talk:["r"] },
+    mouse: { enabled:true, sensorSensitivity:0.4, stickSpeed:54 }
+  };
+  let restored = null;
+  const ui = new UIServer({
+    host: "127.0.0.1",
+    port: 0,
+    publicDir: resolve(here, "../public"),
+    getPayload: () => ({ state: {}, controller: {}, logs: [] }),
+    arm: () => ({ ok: true }),
+    disarm: () => ({ ok: true }),
+    getSettingsBackup: () => backup,
+    restoreSettings: async (value) => {
+      restored = value;
+      return { ok:true, status:200 };
+    }
+  });
+  await ui.start();
+  const port = ui.server.address().port;
+  try {
+    const download = await fetch(`http://127.0.0.1:${port}/api/settings/backup`);
+    assert.equal(download.status, 200);
+    assert.match(download.headers.get("content-disposition"), /attachment/);
+    assert.deepEqual(await download.json(), backup);
+
+    const restore = await fetch(`http://127.0.0.1:${port}/api/settings/restore`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(backup)
+    });
+    assert.equal(restore.status, 200);
+    assert.deepEqual(restored, backup);
+  } finally {
+    await ui.stop();
+  }
+});

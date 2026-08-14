@@ -37,6 +37,8 @@
     select { width: 100%; min-height: 44px; border: 1px solid #343c44; border-radius: 9px; padding: 10px; background: #20252a; color: #eef1f4; }
     button:focus-visible, select:focus-visible, input:focus-visible { outline: 3px solid #a9c8ff; outline-offset: 2px; }
     #saveSettings { background: #72a6ff; color: #09111c; }
+    #backupSettings { background: #343c44; color: #eef1f4; }
+    #restoreSettings { background: #d6a54b; color: #171006; }
     .setting-note { color: #8e9aa5; font-size: 13px; margin: 10px 0 0; }
     .toggle-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 12px; padding: 12px; background: #20252a; border: 1px solid #303840; border-radius: 10px; }
     .toggle-row input { width: 22px; height: 22px; accent-color: #72a6ff; }
@@ -52,6 +54,11 @@
     .sensor strong { font-size: 14px; font-weight: 650; font-variant-numeric: tabular-nums; }
     .motion-meter { height: 7px; overflow: hidden; margin-top: 9px; border-radius: 999px; background: #111519; }
     .motion-meter div { height: 100%; width: var(--motion); background: #72a6ff; transition: width 80ms linear; }
+    .battery-meter { height: 9px; overflow: hidden; margin-top: 9px; border-radius: 999px; background: #111519; }
+    .battery-meter div { height: 100%; width: var(--battery); background: #63db94; transition: width 160ms linear, background 160ms linear; }
+    .battery-meter div.warning { background: #f4c45e; }
+    .battery-meter div.low { background: #ff7777; }
+    .battery-percent { display: block; margin-top: 6px; color: #8e9aa5; font-size: 11px; }
     .sensor-meta { display: flex; flex-wrap: wrap; gap: 10px 24px; margin: 12px 0 0; color: #8e9aa5; font-size: 12px; }
     .logs { height: 270px; overflow: auto; background: #0d0f11; border-radius: 10px; padding: 10px 12px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; line-height: 1.55; }
     .log-error { color: #ff8585; } .log-blocked { color: #f3c76a; } .log-action { color: #74dca0; } .log-dry { color: #83b7ff; }
@@ -104,7 +111,7 @@
         <div class="sensor"><span>マウスセンサー位置</span><strong id="mousePosition">x — / y —</strong></div>
         <div class="sensor"><span>マウス表面品質 / LOD</span><strong id="mouseSurface">SQUAL — / LOD —</strong></div>
         <div class="sensor"><span>IMU温度（生値）</span><strong id="imuTemperature">—</strong></div>
-        <div class="sensor"><span>バッテリー</span><strong id="battery">— V / — mA / 状態 —</strong></div>
+        <div class="sensor"><span>バッテリー</span><strong id="battery">— V / — mA / 状態 —</strong><div class="battery-meter"><div id="batteryBar"></div></div><small id="batteryPercent" class="battery-percent">残量目安 —</small></div>
         <div class="sensor"><span>入力パケット</span><strong id="packetId">—</strong></div>
       </div>
       <p class="sensor-meta"><span id="sensorUpdated">最終受信 —</span><span>Stickとボタン状態は上の欄に表示</span></p>
@@ -134,7 +141,12 @@
         </label>
       </div>
       <div id="settingsGrid" class="settings-grid"></div>
-      <div class="controls"><button id="saveSettings" disabled>設定を保存</button></div>
+      <div class="controls">
+        <button id="saveSettings" disabled>設定を保存</button>
+        <button id="backupSettings">バックアップ</button>
+        <button id="restoreSettings">復元</button>
+        <input id="restoreFile" type="file" accept="application/json,.json" hidden />
+      </div>
       <p id="settingsInfo" class="setting-note">読み込み中。複数のボタンに同じ機能を設定できます。</p>
     </div>
     <div class="card full">
@@ -164,6 +176,10 @@ function formatTime(ms) { return ms ? new Date(ms).toLocaleTimeString("ja-JP", {
 function vectorText(vector, digits) {
   const number = key => Number.isFinite(vector?.[key]) ? Number(vector[key]).toFixed(digits) : "—";
   return `x ${number("x")} / y ${number("y")} / z ${number("z")}`;
+}
+function batteryEstimate(voltage) {
+  if (!Number.isFinite(voltage)) return null;
+  return Math.round(Math.max(0, Math.min(1, (voltage - 3.3) / 0.9)) * 100);
 }
 function render(payload) {
   latestPayload = payload;
@@ -212,6 +228,12 @@ function render(payload) {
   const batteryCurrent = Number.isFinite(sensors.batteryCurrentMilliamps) ? `${sensors.batteryCurrentMilliamps.toFixed(2)} mA` : "— mA";
   const chargeStatus = Number.isInteger(sensors.chargeStatus) ? `0x${sensors.chargeStatus.toString(16).padStart(2, "0").toUpperCase()}` : "—";
   document.querySelector("#battery").textContent = `${batteryVoltage} / ${batteryCurrent} / 状態 ${chargeStatus}`;
+  const batteryPercent = batteryEstimate(s.batteryVoltage);
+  const batteryBar = document.querySelector("#batteryBar");
+  batteryBar.style.setProperty("--battery", `${batteryPercent ?? 0}%`);
+  batteryBar.classList.toggle("warning", batteryPercent !== null && batteryPercent <= 35 && !c.battery?.low);
+  batteryBar.classList.toggle("low", Boolean(c.battery?.low));
+  document.querySelector("#batteryPercent").textContent = batteryPercent === null ? "残量目安 —" : `残量目安 ${batteryPercent}%${c.battery?.low ? " / 充電してください" : ""}`;
   document.querySelector("#packetId").textContent = Number.isInteger(sensors.packetId) ? String(sensors.packetId) : "—";
   document.querySelector("#sensorUpdated").textContent = `最終受信 ${sensors.receivedAt ? formatTime(sensors.receivedAt) : "—"}`;
   document.querySelector("#last").textContent = s.lastAction ? `${s.lastAction.name}  ${formatTime(s.lastAction.at)}` : "なし";
@@ -237,6 +259,7 @@ function updateSettingsAvailability() {
   document.querySelector("#mouseEnabled").disabled = !canEdit;
   for (const slider of document.querySelectorAll("[data-mouse-speed]")) slider.disabled = !canEdit;
   document.querySelector("#saveSettings").disabled = !canEdit || !settingsDirty;
+  document.querySelector("#restoreSettings").disabled = !canEdit;
   if (!canEdit && settingsDirty) document.querySelector("#settingsInfo").textContent = "DISABLEDになってから保存してください。";
 }
 async function loadSettings() {
@@ -315,6 +338,36 @@ document.querySelector("#saveSettings").onclick = async () => {
     if (!response.ok || !result.ok) throw new Error(result.message ?? "保存できませんでした");
     settingsDirty = false;
     info.textContent = "保存しました。全ボタンを離してから＋長押しで有効化してください。";
+  } catch (error) {
+    info.textContent = error.message;
+  }
+  updateSettingsAvailability();
+};
+document.querySelector("#backupSettings").onclick = () => {
+  window.location.href = "/api/settings/backup";
+};
+document.querySelector("#restoreSettings").onclick = () => {
+  document.querySelector("#restoreFile").click();
+};
+document.querySelector("#restoreFile").onchange = async event => {
+  const file = event.target.files?.[0];
+  event.target.value = "";
+  if (!file) return;
+  const info = document.querySelector("#settingsInfo");
+  try {
+    const backup = JSON.parse(await file.text());
+    if (!window.confirm("現在のボタン・マウス設定を、このバックアップ内容へ置き換えますか？")) return;
+    info.textContent = "復元中…";
+    const response = await fetch("/api/settings/restore", {
+      method:"PUT",
+      headers:{ "Content-Type":"application/json" },
+      body:JSON.stringify(backup)
+    });
+    const result = await response.json();
+    if (!response.ok || !result.ok) throw new Error(result.message ?? "復元できませんでした");
+    settingsDirty = false;
+    info.textContent = "復元しました。全ボタンを離してから＋長押しで有効化してください。";
+    setTimeout(() => window.location.reload(), 500);
   } catch (error) {
     info.textContent = error.message;
   }

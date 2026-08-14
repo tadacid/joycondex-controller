@@ -232,4 +232,11 @@ export class MacOSActions {
   async openNewChat() {
     return this.#run("open", ["codex://threads/new"]);
   }
+
+  async notifyLowBattery(voltage) {
+    const detail = Number.isFinite(voltage) ? `（${voltage.toFixed(2)} V）` : "";
+    return this.#osascript([
+      `display notification ${appleScriptString(`Joy-Conを充電してください${detail}`)} with title "Codex Grip" subtitle "バッテリー残量が少なくなっています"`
+    ]);
+  }
 }

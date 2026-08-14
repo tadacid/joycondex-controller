@@ -1,0 +1,26 @@
+#!/bin/zsh
+set -euo pipefail
+
+APP_DIR="${0:A:h:h:h}"
+PROJECT_ROOT="${APP_DIR:h}"
+FALLBACK_ROOT="/Users/tada/codex-work/Codex_controller"
+
+if [[ ! -x "$PROJECT_ROOT/START_JOYCON_LIVE.command" ]]; then
+  PROJECT_ROOT="$FALLBACK_ROOT"
+fi
+
+if [[ ! -x "$PROJECT_ROOT/START_JOYCON_LIVE.command" ]]; then
+  osascript -e 'display alert "Codex Gripを起動できません" message "Codex_controllerフォルダが見つかりません。" as critical'
+  exit 1
+fi
+
+if curl -fsS --max-time 1 http://127.0.0.1:8788/health >/dev/null 2>&1; then
+  open -a "Google Chrome" http://127.0.0.1:8788/
+  exit 0
+fi
+
+osascript \
+  -e 'tell application "Terminal"' \
+  -e "do script \"$PROJECT_ROOT/START_JOYCON_LIVE.command\"" \
+  -e 'activate' \
+  -e 'end tell'

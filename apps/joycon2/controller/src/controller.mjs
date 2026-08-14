@@ -17,6 +17,7 @@ import { SSEClient } from "./sse-client.mjs";
 import { UIServer } from "./ui-server.mjs";
 import { VoiceKeyClient } from "./voicekey-client.mjs";
 import { BridgeLauncher } from "./bridge-launcher.mjs";
+import { BatteryMonitor } from "./battery-monitor.mjs";
 
 const sleep = (ms) => new Promise((resolveSleep) => setTimeout(resolveSleep, ms));
 const here = dirname(fileURLToPath(import.meta.url));
@@ -71,6 +72,17 @@ const cursor = new CursorDriver({
   binaryPath: resolve(projectDir, "native/build/cursor-helper"),
   dryRun: config.dryRun,
   onLog: (level, message) => log(level, message)
+});
+
+const batteryMonitor = new BatteryMonitor({
+  onWarning: async ({ voltage }) => {
+    log("warn", `Joy-Conのバッテリー残量が少なくなっています (${voltage.toFixed(2)} V)`);
+    try {
+      await actions.notifyLowBattery(voltage);
+    } catch (error) {
+      log("warn", `バッテリー通知を表示できませんでした: ${error.message}`);
+    }
+  }
 });
 
 async function targetGuarded(operation) {
@@ -184,6 +196,7 @@ const machine = new ControllerStateMachine({
   onPointerButton: ({ down }) => cursor.button(down),
   onState: (state) => {
     latestState = state;
+    batteryMonitor.update({ connected: state.joyconConnected, voltage: state.batteryVoltage });
     scheduleStateBroadcast();
   }
 });
@@ -209,6 +222,19 @@ function settingsPayload() {
     buttonOptions: BUTTON_OPTIONS,
     functionOptions: FUNCTION_OPTIONS,
     canSave: !current.armed && !current.talkActive && !current.settingsUpdating && !actionBusy
+  };
+}
+
+function settingsBackupPayload() {
+  return {
+    schemaVersion: 1,
+    exportedAt: new Date().toISOString(),
+    bindings: currentEditableBindings(),
+    mouse: {
+      enabled: Boolean(config.mouse.enabled),
+      sensorSensitivity: config.mouse.sensorSensitivity,
+      stickSpeed: config.mouse.stickSpeed
+    }
   };
 }
 
@@ -248,6 +274,18 @@ async function saveSettings(requestedBindings, requestedMouse) {
   }
 }
 
+async function restoreSettings(backup) {
+  if (!backup || typeof backup !== "object" || Array.isArray(backup)) {
+    return { ok: false, status: 400, message: "バックアップJSONが不正です" };
+  }
+  const allowedKeys = new Set(["schemaVersion", "exportedAt", "bindings", "mouse"]);
+  const keys = Object.keys(backup);
+  if (keys.some((key) => !allowedKeys.has(key)) || backup.schemaVersion !== 1 || !("bindings" in backup) || !("mouse" in backup)) {
+    return { ok: false, status: 400, message: "Codex Gripの設定バックアップではありません" };
+  }
+  return saveSettings(backup.bindings, backup.mouse);
+}
+
 function payload() {
   return {
     state: latestState,
@@ -260,7 +298,8 @@ function payload() {
       bridgeLaunch: bridgeLauncher.snapshot(),
       bindings: config.bindings,
       voiceKeyOwned: voiceKey.ownsRecording,
-      cursor: cursor.snapshot()
+      cursor: cursor.snapshot(),
+      battery: batteryMonitor.snapshot()
     },
     logs
   };
@@ -281,6 +320,8 @@ const ui = new UIServer({
   },
   getSettings: settingsPayload,
   saveSettings,
+  getSettingsBackup: settingsBackupPayload,
+  restoreSettings,
   onLog: log
 });
 

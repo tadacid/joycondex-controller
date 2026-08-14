@@ -43,13 +43,18 @@ Joy-Con 2版のV0は、既存Bridgeの横に安全制御付きControllerを追�
 - SR/SLによる推論レベル 上／下
 - HOME/Cは競合するControl+Tabを避け、Codexの専用ショートカットで左サイドバーの前／次チャットを検索画面なしで切替
 - Bridge/SSE切断時のVoiceKey停止と再ニュートラル要求
+- バッテリー残量目安メーターと3.55V以下のMac通知
+- ボタン・マウス設定のJSONバックアップ／復元
+- `Codex Grip.app`からの手動起動と、起動済み時のダッシュボード表示
 - Node標準テスト
 
 ### テスト
 
-Controllerの自動テストは現在49件あり、全件Pass確認済み。
+Controllerの自動テストは現在53件あり、全件Pass確認済み。
 
-Mac上のLIVE実行でJoy-Con 2の検出・接続、VoiceKey開始／停止、A送信、B長押しクリア、HOME/C移動、SR/SL推論変更、持ち上げ時ZRのメイン／サイド入力欄切替まで操作ログを確認済みです。整理版への最終再起動後はControllerとBridgeが正常起動し、個人設定（机上速度0.4、Stick速度108）も維持されています。再起動直後はJoy-Conがスリープ中でBridgeは`scanning / devices: 0`でした。
+Mac上のLIVE実行でJoy-Con 2の検出・接続、VoiceKey開始／停止、A送信、B長押しクリア、HOME/C移動、SR/SL推論変更、持ち上げ時ZRのメイン／サイド入力欄切替まで操作ログを確認済みです。整理版への最終再起動後はControllerとBridgeが正常起動し、個人設定（机上速度0.4、Stick速度216）も維持されています。再起動直後はJoy-Conがスリープ中でBridgeは`scanning / devices: 0`でした。
+
+`/Applications/Codex Grip.app`からLIVE Controllerを起動できること、再クリック時に二重起動せずControllerが1プロセスのままであること、実設定のバックアップJSONをダウンロードできることを確認済みです。電池メーターの実電圧表示はJoy-Con再接続後に最終確認します。
 
 再編後もルートで:
 

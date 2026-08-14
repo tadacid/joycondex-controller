@@ -15,6 +15,16 @@ function json(response, status, payload) {
   response.end(JSON.stringify(payload));
 }
 
+function jsonDownload(response, payload) {
+  const date = new Date().toISOString().slice(0, 10);
+  response.writeHead(200, {
+    "Content-Type": "application/json; charset=utf-8",
+    "Content-Disposition": `attachment; filename="codex-grip-settings-${date}.json"`,
+    "Cache-Control": "no-store"
+  });
+  response.end(`${JSON.stringify(payload, null, 2)}\n`);
+}
+
 function originAllowed(request, host, port) {
   const origin = request.headers.origin;
   return !origin || origin === `http://${host}:${port}`;
@@ -53,7 +63,7 @@ function readJsonBody(request, { maximumBytes = 8192 } = {}) {
 }
 
 export class UIServer {
-  constructor({ host, port, publicDir, getPayload, arm, disarm, connectJoycon, getSettings, saveSettings, onLog }) {
+  constructor({ host, port, publicDir, getPayload, arm, disarm, connectJoycon, getSettings, saveSettings, getSettingsBackup, restoreSettings, onLog }) {
     this.host = host;
     this.port = port;
     this.publicDir = publicDir;
@@ -63,6 +73,8 @@ export class UIServer {
     this.connectJoycon = connectJoycon ?? (async () => ({ ok: false, status: 501, message: "接続機能がありません" }));
     this.getSettings = getSettings ?? (() => ({ ok: false, message: "設定機能がありません" }));
     this.saveSettings = saveSettings ?? (async () => ({ ok: false, status: 501, message: "設定機能がありません" }));
+    this.getSettingsBackup = getSettingsBackup ?? (() => ({ ok: false, message: "バックアップ機能がありません" }));
+    this.restoreSettings = restoreSettings ?? (async () => ({ ok: false, status: 501, message: "復元機能がありません" }));
     this.onLog = onLog ?? (() => {});
     this.clients = new Set();
     this.server = createServer((request, response) => this.#handle(request, response));
@@ -114,6 +126,10 @@ export class UIServer {
       json(response, 200, this.getSettings());
       return;
     }
+    if (request.method === "GET" && url.pathname === "/api/settings/backup") {
+      jsonDownload(response, this.getSettingsBackup());
+      return;
+    }
     if (request.method === "PUT" && url.pathname === "/api/settings") {
       if (!originAllowed(request, this.host, this.port)) {
         json(response, 403, { ok: false, message: "Origin rejected" });
@@ -132,6 +148,26 @@ export class UIServer {
           return;
         }
         const result = await this.saveSettings(body.bindings, body.mouse);
+        json(response, result.status ?? (result.ok ? 200 : 400), result);
+        this.broadcast();
+      } catch (error) {
+        json(response, error.status ?? 400, { ok: false, message: error.message });
+      }
+      return;
+    }
+    if (request.method === "PUT" && url.pathname === "/api/settings/restore") {
+      if (!originAllowed(request, this.host, this.port)) {
+        json(response, 403, { ok: false, message: "Origin rejected" });
+        return;
+      }
+      const contentType = request.headers["content-type"]?.split(";", 1)[0]?.trim().toLowerCase();
+      if (contentType !== "application/json") {
+        json(response, 415, { ok: false, message: "Content-Typeはapplication/jsonにしてください" });
+        return;
+      }
+      try {
+        const backup = await readJsonBody(request);
+        const result = await this.restoreSettings(backup);
         json(response, result.status ?? (result.ok ? 200 : 400), result);
         this.broadcast();
       } catch (error) {

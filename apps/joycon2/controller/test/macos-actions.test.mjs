@@ -72,3 +72,11 @@ test("戻ると最新メッセージ移動は座標を使わずキー操作を�
   assert.match(logs[0].message, /key code 53/);
   assert.match(logs[1].message, /key code 125 using \{command down\}/);
 });
+
+test("低バッテリー警告はmacOS通知として表示する", async () => {
+  const { actions, logs } = createDryActions();
+  await actions.notifyLowBattery(3.52);
+  assert.match(logs[0].message, /display notification/);
+  assert.match(logs[0].message, /3\.52 V/);
+  assert.match(logs[0].message, /Codex Grip/);
+});
