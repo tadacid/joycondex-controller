@@ -25,33 +25,29 @@ test("左サイドバーのチャット上下移動は専用ショートカッ�
   assert.doesNotMatch(logs.map(({ message }) => message).join("\n"), /keystroke "k"/);
 });
 
-test("推論レベルの連続操作はモデル選択を開いたまま全入力を反映する", async () => {
+test("推論レベルの連続操作は専用ショートカットを直接送る", async () => {
   const { actions, logs } = createDryActions();
 
   await actions.increaseReasoningEffort();
   await actions.increaseReasoningEffort();
   await actions.decreaseReasoningEffort();
-  await new Promise((resolve) => setTimeout(resolve, 560));
-  await actions.drain();
 
-  assert.match(logs[0].message, /keystroke "m" using \{control down, shift down\}/);
-  assert.match(logs[1].message, /key code 124/);
-  assert.match(logs[2].message, /key code 124/);
-  assert.match(logs[3].message, /key code 123/);
-  assert.match(logs.at(-1).message, /key code 53/);
+  assert.match(logs[0].message, /key code 124 using \{control down, option down, shift down\}/);
+  assert.match(logs[1].message, /key code 124 using \{control down, option down, shift down\}/);
+  assert.match(logs[2].message, /key code 123 using \{control down, option down, shift down\}/);
   const allLogs = logs.map(({ message }) => message).join("\n");
-  assert.equal((allLogs.match(/keystroke "m"/g) ?? []).length, 1);
-  assert.doesNotMatch(allLogs, /clipboard|keystroke "k"|option down|key code 36/);
+  assert.doesNotMatch(allLogs, /clipboard|keystroke "k"|keystroke "m"|key code 36|key code 53/);
 });
 
-test("推論調整直後の通常操作はモデル選択を閉じてから実行する", async () => {
+test("推論調整直後の通常操作でもモデル選択を開かない", async () => {
   const { actions, logs } = createDryActions();
 
   await actions.increaseReasoningEffort();
   await actions.enqueue("send", () => actions.sendComposer());
 
   const allLogs = logs.map(({ message }) => message).join("\n");
-  assert.match(allLogs, /key code 53[\s\S]*key code 36/);
+  assert.match(allLogs, /key code 124[\s\S]*key code 36/);
+  assert.doesNotMatch(allLogs, /keystroke "m"|key code 53/);
 });
 
 test("ボイスモードはControl+Option+Vを送る", async () => {

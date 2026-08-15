@@ -37,22 +37,11 @@ export class MacOSActions {
     this.dryRun = dryRun;
     this.onLog = onLog ?? (() => {});
     this.queue = Promise.resolve();
-    this.reasoningPickerOpen = false;
-    this.reasoningPickerCloseTimer = null;
-    this.reasoningPickerGeneration = 0;
   }
 
   enqueue(label, operation) {
     const task = this.queue.then(async () => {
       this.onLog("debug", `実行: ${label}`);
-      if (
-        this.reasoningPickerOpen &&
-        label !== "reasonUp" &&
-        label !== "reasonDown" &&
-        label !== "reasoningPickerClose"
-      ) {
-        await this.#closeReasoningPicker();
-      }
       const result = await operation();
       await sleep(this.actionCooldownMs);
       return result;
@@ -184,49 +173,12 @@ export class MacOSActions {
     return this.keyCode(125, ["control", "option", "shift"]);
   }
 
-  async #closeReasoningPicker() {
-    if (this.reasoningPickerCloseTimer !== null) {
-      clearTimeout(this.reasoningPickerCloseTimer);
-      this.reasoningPickerCloseTimer = null;
-    }
-    if (!this.reasoningPickerOpen) return;
-    this.reasoningPickerOpen = false;
-    await this.keyCode(53);
-  }
-
-  #scheduleReasoningPickerClose() {
-    if (this.reasoningPickerCloseTimer !== null) clearTimeout(this.reasoningPickerCloseTimer);
-    const generation = ++this.reasoningPickerGeneration;
-    this.reasoningPickerCloseTimer = setTimeout(() => {
-      this.reasoningPickerCloseTimer = null;
-      this.enqueue("reasoningPickerClose", async () => {
-        if (generation !== this.reasoningPickerGeneration) return;
-        await this.#closeReasoningPicker();
-      }).catch(() => {});
-    }, 520);
-  }
-
-  async #changeReasoningEffort(directionKeyCode) {
-    if (this.reasoningPickerCloseTimer !== null) {
-      clearTimeout(this.reasoningPickerCloseTimer);
-      this.reasoningPickerCloseTimer = null;
-    }
-    if (!this.reasoningPickerOpen) {
-      // Codex標準のモデル選択を開き、座標に依存しないPower操作を使う。
-      await this.keystroke("m", ["control", "shift"]);
-      await sleep(180);
-      this.reasoningPickerOpen = true;
-    }
-    await this.keyCode(directionKeyCode);
-    this.#scheduleReasoningPickerClose();
-  }
-
   async increaseReasoningEffort() {
-    return this.#changeReasoningEffort(124);
+    return this.keyCode(124, ["control", "option", "shift"]);
   }
 
   async decreaseReasoningEffort() {
-    return this.#changeReasoningEffort(123);
+    return this.keyCode(123, ["control", "option", "shift"]);
   }
 
   async openNewChat() {
