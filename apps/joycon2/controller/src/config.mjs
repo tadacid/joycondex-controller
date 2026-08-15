@@ -198,7 +198,7 @@ export function normalizeSettingsBackup(backup, currentFeedback) {
       : [];
   if (allowed.length === 0 || Object.keys(backup).some((key) => !allowed.includes(key)) ||
       !("bindings" in backup) || !("mouse" in backup) || (version === 2 && !("feedback" in backup))) {
-    throw new Error("Codex Gripの設定バックアップではありません");
+    throw new Error("JoyCondexの設定バックアップではありません");
   }
   return {
     bindings: backup.bindings,

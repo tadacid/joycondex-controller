@@ -19,7 +19,7 @@ function jsonDownload(response, payload) {
   const date = new Date().toISOString().slice(0, 10);
   response.writeHead(200, {
     "Content-Type": "application/json; charset=utf-8",
-    "Content-Disposition": `attachment; filename="codex-grip-settings-${date}.json"`,
+    "Content-Disposition": `attachment; filename="joycondex-settings-${date}.json"`,
     "Cache-Control": "no-store"
   });
   response.end(`${JSON.stringify(payload, null, 2)}\n`);

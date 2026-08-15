@@ -78,5 +78,5 @@ test("低バッテリー警告はmacOS通知として表示する", async () => 
   await actions.notifyLowBattery(3.52);
   assert.match(logs[0].message, /display notification/);
   assert.match(logs[0].message, /3\.52 V/);
-  assert.match(logs[0].message, /Codex Grip/);
+  assert.match(logs[0].message, /JoyCondex/);
 });

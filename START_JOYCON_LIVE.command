@@ -7,7 +7,7 @@ BRIDGE_PID=""
 CONTROLLER_PID=""
 
 cleanup() {
-  print "\nCodex Gripを終了します…"
+  print "\nJoyCondexを終了します…"
   if [[ -n "$CONTROLLER_PID" ]]; then
     pkill -TERM -P "$CONTROLLER_PID" 2>/dev/null || true
     kill "$CONTROLLER_PID" 2>/dev/null || true

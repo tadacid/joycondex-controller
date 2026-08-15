@@ -65,7 +65,7 @@ test("現在のターン記録から人による承認待ちを判定する", as
   });
   await new Promise((resolveListen) => server.listen(0, "127.0.0.1", resolveListen));
   const endpoint = `http://127.0.0.1:${server.address().port}/api/codex-event`;
-  const fixtureDir = await mkdtemp(resolve(tmpdir(), "codex-grip-hook-"));
+  const fixtureDir = await mkdtemp(resolve(tmpdir(), "joycondex-hook-"));
   const transcriptPath = resolve(fixtureDir, "transcript.jsonl");
   await writeFile(transcriptPath, [
     JSON.stringify({ type:"turn_context", payload:{ turn_id:"t-user", approvals_reviewer:"user" } }),

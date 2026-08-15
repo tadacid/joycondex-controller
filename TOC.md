@@ -1,7 +1,7 @@
 # Project Map / TOC
 
 ```text
-codex-grip/
+joycondex-controller/
 ├─ README.md
 ├─ AGENTS.md
 ├─ TOC.md

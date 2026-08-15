@@ -1,4 +1,4 @@
-# Codex Grip - Agent Instructions
+# JoyCondex - Agent Instructions
 
 ## 目的
 

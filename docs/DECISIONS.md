@@ -2,7 +2,7 @@
 
 ## D001: 1 repo / deviceごとに別app
 
-Joy-Con 2版とM5Stack版は別プロジェクトにせず、同一 `codex-grip` repo内の別appとして管理する。
+Joy-Con 2版とM5Stack版は別プロジェクトにせず、同一 `joycondex-controller` repo内の別appとして管理する。
 
 理由:
 

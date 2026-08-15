@@ -2,7 +2,7 @@
 
 ## 現在地
 
-同一repo `codex-grip` の中に、Joy-Con 2版を別appとして整理済み。
+同一repo `joycondex-controller` の中に、Joy-Con 2版を別appとして整理済み。
 
 - Bridge: `apps/joycon2/bridge/`
 - Codex Controller: `apps/joycon2/controller/`

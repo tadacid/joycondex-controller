@@ -1,4 +1,4 @@
-# M5Stack Codex Grip - Hardware Plan
+# M5Stack JoyCondex - Hardware Plan
 
 Joy-Con 2版で操作UXを先行検証した後に作る専用ハード版です。
 
