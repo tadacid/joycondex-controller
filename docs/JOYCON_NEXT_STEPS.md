@@ -27,7 +27,8 @@ Bridgeは原則変更せず、Controller側でCodex操作を実装する。
 - DISABLED中のボタン設定画面と即時反映
 - マウス操作ON/OFF、机上センサー／持ち上げStickの自動切替
 - HOME/Cによるタスク選択 上／下、ZRの机上クリック／持ち上げ時入力欄切替、Stick押込による左クリック
-- Node標準テスト37件
+- 作業完了2回・承認待ち3回のJoy-Con振動通知と強さ設定
+- Node標準テスト62件
 - ルートからの一括起動 `.command`
 
 ## 最初に実機で確認すること
@@ -122,6 +123,6 @@ UXが固まってからのみ:
 
 ### P4: Joy-Con出力
 
-BridgeのSwift側にはwrite characteristicがある。Joy-Con 2 output protocolを実装する段階になれば、振動・LED feedbackを追加できる可能性がある。
+右Joy-Con 2の振動出力をV1.1で追加済み。Codexの`Stop`と`PermissionRequest` Hookを、Controllerのローカル通知口からBridgeへ渡す。
 
-ただしV0とは別PR/別作業にする。
+LED feedbackと、確実な通知口がないエラー自動振動は別作業にする。

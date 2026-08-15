@@ -129,10 +129,11 @@ test("fake BridgeからTALK→ACTIONまでDRY RUNで通る", async (t) => {
     taskUp:["home"], taskDown:["chat"], reasonUp:["railRightSr"], reasonDown:[],
     contextPrimary:["zr"], mouseClick:["stickRight"]
   };
+  const feedback = { enabled:true, strength:5 };
   const armedSave = await fetch(`http://127.0.0.1:${uiPort}/api/settings`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ bindings: changedBindings, mouse:{ enabled:true, sensorSensitivity:0.3, stickSpeed:27 } })
+    body: JSON.stringify({ bindings: changedBindings, mouse:{ enabled:true, sensorSensitivity:0.3, stickSpeed:27 }, feedback })
   });
   assert.equal(armedSave.status, 409);
 
@@ -145,7 +146,7 @@ test("fake BridgeからTALK→ACTIONまでDRY RUNで通る", async (t) => {
   const duplicateSave = await fetch(`http://127.0.0.1:${uiPort}/api/settings`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ bindings: { ...changedBindings, action:["railRightSl"] }, mouse:{ enabled:true, sensorSensitivity:0.3, stickSpeed:27 } })
+    body: JSON.stringify({ bindings: { ...changedBindings, action:["railRightSl"] }, mouse:{ enabled:true, sensorSensitivity:0.3, stickSpeed:27 }, feedback })
   });
   assert.equal(duplicateSave.status, 400);
 
@@ -164,11 +165,12 @@ test("fake BridgeからTALK→ACTIONまでDRY RUNで通る", async (t) => {
   assert.ok(settings.functionOptions.some((option) => option.value === "escape"));
   assert.equal(settings.mouse.sensorSensitivity, 0.4);
   assert.equal(settings.mouse.stickSpeed, 54);
+  assert.deepEqual(settings.feedback, feedback);
 
   const validSave = await fetch(`http://127.0.0.1:${uiPort}/api/settings`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ bindings: changedBindings, mouse:{ enabled:true, sensorSensitivity:0.3, stickSpeed:27 } })
+    body: JSON.stringify({ bindings: changedBindings, mouse:{ enabled:true, sensorSensitivity:0.3, stickSpeed:27 }, feedback:{ enabled:true, strength:4 } })
   });
   assert.equal(validSave.status, 200);
   const savedConfig = JSON.parse(await readFile(temporaryConfig, "utf8"));
@@ -179,6 +181,7 @@ test("fake BridgeからTALK→ACTIONまでDRY RUNで通る", async (t) => {
   assert.deepEqual(savedConfig.bindings.mouseClick, ["stickRight"]);
   assert.equal(savedConfig.mouse.sensorSensitivity, 0.3);
   assert.equal(savedConfig.mouse.stickSpeed, 27);
+  assert.deepEqual(savedConfig.feedback, { enabled:true, strength:4 });
 
   send(neutral);
   await waitFor(async () => {

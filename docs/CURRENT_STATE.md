@@ -44,13 +44,14 @@ Joy-Con 2版のV0は、既存Bridgeの横に安全制御付きControllerを追�
 - HOME/Cは競合するControl+Tabを避け、Codexの専用ショートカットで左サイドバーの前／次チャットを検索画面なしで切替
 - Bridge/SSE切断時のVoiceKey停止と再ニュートラル要求
 - バッテリー残量目安メーターと3.55V以下のMac通知
+- Codex作業完了・承認待ちのJoy-Con振動通知（DISABLED中も通知、1回500msの持続波形）
 - ボタン・マウス設定のJSONバックアップ／復元
 - `Codex Grip.app`からの手動起動と、起動済み時のダッシュボード表示
 - Node標準テスト
 
 ### テスト
 
-Controllerの自動テストは現在53件あり、全件Pass確認済み。
+Controllerの自動テストは現在62件あり、全件Pass確認済み。
 
 Mac上のLIVE実行でJoy-Con 2の検出・接続、VoiceKey開始／停止、A送信、B長押しクリア、HOME/C移動、SR/SL推論変更、持ち上げ時ZRのメイン／サイド入力欄切替まで操作ログを確認済みです。整理版への最終再起動後はControllerとBridgeが正常起動し、個人設定（机上速度0.4、Stick速度216）も維持されています。再起動直後はJoy-Conがスリープ中でBridgeは`scanning / devices: 0`でした。
 
@@ -72,3 +73,4 @@ Joy-Con 2実機で、以下を最終確認:
 - 机上／持ち上げ境界でZRが誤クリックしないか
 - VoiceKey録音中の実切断で停止が確実に働くか
 - 数日使用した時の再接続と速度設定の安定性
+- 実機で作業完了2回・承認待ち3回の振動パターンと強さ

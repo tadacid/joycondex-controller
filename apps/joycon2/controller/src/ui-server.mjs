@@ -63,7 +63,7 @@ function readJsonBody(request, { maximumBytes = 8192 } = {}) {
 }
 
 export class UIServer {
-  constructor({ host, port, publicDir, getPayload, arm, disarm, connectJoycon, getSettings, saveSettings, getSettingsBackup, restoreSettings, onLog }) {
+  constructor({ host, port, publicDir, getPayload, arm, disarm, connectJoycon, getSettings, saveSettings, getSettingsBackup, restoreSettings, receiveCodexEvent, testFeedback, onLog }) {
     this.host = host;
     this.port = port;
     this.publicDir = publicDir;
@@ -75,6 +75,8 @@ export class UIServer {
     this.saveSettings = saveSettings ?? (async () => ({ ok: false, status: 501, message: "設定機能がありません" }));
     this.getSettingsBackup = getSettingsBackup ?? (() => ({ ok: false, message: "バックアップ機能がありません" }));
     this.restoreSettings = restoreSettings ?? (async () => ({ ok: false, status: 501, message: "復元機能がありません" }));
+    this.receiveCodexEvent = receiveCodexEvent ?? (async () => ({ ok: false, status: 501, message: "通知機能がありません" }));
+    this.testFeedback = testFeedback ?? (async () => ({ ok: false, status: 501, message: "振動テスト機能がありません" }));
     this.onLog = onLog ?? (() => {});
     this.clients = new Set();
     this.server = createServer((request, response) => this.#handle(request, response));
@@ -143,16 +145,51 @@ export class UIServer {
       try {
         const body = await readJsonBody(request);
         if (!body || typeof body !== "object" || Array.isArray(body) ||
-            Object.keys(body).length !== 2 || !("bindings" in body) || !("mouse" in body)) {
-          json(response, 400, { ok: false, message: "bindingsとmouseだけを指定してください" });
+            Object.keys(body).length !== 3 || !("bindings" in body) || !("mouse" in body) || !("feedback" in body)) {
+          json(response, 400, { ok: false, message: "bindings、mouse、feedbackだけを指定してください" });
           return;
         }
-        const result = await this.saveSettings(body.bindings, body.mouse);
+        const result = await this.saveSettings(body.bindings, body.mouse, body.feedback);
         json(response, result.status ?? (result.ok ? 200 : 400), result);
         this.broadcast();
       } catch (error) {
         json(response, error.status ?? 400, { ok: false, message: error.message });
       }
+      return;
+    }
+    if (request.method === "POST" && url.pathname === "/api/codex-event") {
+      if (request.headers.origin) {
+        json(response, 403, { ok: false, message: "Browser Origin rejected" });
+        return;
+      }
+      const contentType = request.headers["content-type"]?.split(";", 1)[0]?.trim().toLowerCase();
+      if (contentType !== "application/json") {
+        json(response, 415, { ok: false, message: "Content-Typeはapplication/jsonにしてください" });
+        return;
+      }
+      try {
+        const body = await readJsonBody(request, { maximumBytes: 1024 });
+        if (!body || typeof body !== "object" || Array.isArray(body) ||
+            Object.keys(body).length !== 2 || typeof body.type !== "string" || typeof body.eventId !== "string") {
+          json(response, 400, { ok: false, message: "typeとeventIdだけを指定してください" });
+          return;
+        }
+        const result = await this.receiveCodexEvent(body);
+        json(response, result.status ?? (result.ok ? 202 : 400), result);
+        this.broadcast();
+      } catch (error) {
+        json(response, error.status ?? 400, { ok: false, message: error.message });
+      }
+      return;
+    }
+    if (request.method === "POST" && url.pathname === "/api/feedback/test") {
+      if (!originAllowed(request, this.host, this.port)) {
+        json(response, 403, { ok: false, message: "Origin rejected" });
+        return;
+      }
+      const result = await this.testFeedback();
+      json(response, result.status ?? (result.ok ? 202 : 400), result);
+      this.broadcast();
       return;
     }
     if (request.method === "PUT" && url.pathname === "/api/settings/restore") {

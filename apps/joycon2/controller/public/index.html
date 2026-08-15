@@ -39,6 +39,7 @@
     #saveSettings { background: #72a6ff; color: #09111c; }
     #backupSettings { background: #343c44; color: #eef1f4; }
     #restoreSettings { background: #d6a54b; color: #171006; }
+    #testFeedback { background: #805ad5; color: white; margin-top: 12px; width: 100%; }
     .setting-note { color: #8e9aa5; font-size: 13px; margin: 10px 0 0; }
     .toggle-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 12px; padding: 12px; background: #20252a; border: 1px solid #303840; border-radius: 10px; }
     .toggle-row input { width: 22px; height: 22px; accent-color: #72a6ff; }
@@ -123,7 +124,23 @@
       <p id="reason" class="sub"></p>
     </div>
     <div class="card full">
-      <div class="label">Button / Mouse settings</div>
+      <div class="label">Button / Mouse / Feedback settings</div>
+      <label class="toggle-row" for="feedbackEnabled">
+        <span><strong>Codex振動通知</strong><br><small>DISABLED中でも作業完了・承認待ちを通知します</small></span>
+        <input id="feedbackEnabled" type="checkbox" />
+      </label>
+      <div class="speed-grid">
+        <label class="speed-control" for="feedbackStrength">
+          <span class="speed-heading"><strong>振動の強さ</strong><output id="feedbackStrengthValue">5 / 5</output></span>
+          <input id="feedbackStrength" type="range" min="1" max="5" step="1" value="5" />
+          <span class="speed-scale"><span>弱い</span><span>標準</span><span>強い</span></span>
+        </label>
+        <div class="speed-control">
+          <span class="speed-heading"><strong>接続状態</strong><output id="feedbackReady">確認中</output></span>
+          <button id="testFeedback" disabled>テスト振動</button>
+          <p id="feedbackLast" class="setting-note">通知履歴なし</p>
+        </div>
+      </div>
       <label class="toggle-row" for="mouseEnabled">
         <span><strong>マウス操作（Stick・机上センサー共通）</strong><br><small>OFFにすると両方ともカーソルが停止します</small></span>
         <input id="mouseEnabled" type="checkbox" />
@@ -238,6 +255,15 @@ function render(payload) {
   document.querySelector("#sensorUpdated").textContent = `最終受信 ${sensors.receivedAt ? formatTime(sensors.receivedAt) : "—"}`;
   document.querySelector("#last").textContent = s.lastAction ? `${s.lastAction.name}  ${formatTime(s.lastAction.at)}` : "なし";
   document.querySelector("#reason").textContent = `${s.disabledReason ?? ""}${c.dryRun ? " / DRY RUN" : ""}`;
+  const feedback = c.feedback ?? {};
+  const feedbackReady = document.querySelector("#feedbackReady");
+  feedbackReady.textContent = feedback.hapticsReady ? "READY" : "未接続";
+  feedbackReady.className = feedback.hapticsReady ? "good" : "warn";
+  document.querySelector("#testFeedback").disabled = !feedback.hapticsReady;
+  const feedbackLast = feedback.last;
+  document.querySelector("#feedbackLast").textContent = feedbackLast
+    ? `${feedbackLast.message} / ${formatTime(feedbackLast.at)}`
+    : "通知履歴なし";
   document.querySelector("#arm").disabled = s.armed || !s.bridgeConnected || !s.neutralReady || !s.joyconConnected || s.settingsUpdating;
   document.querySelector("#disarm").disabled = !s.armed;
   updateSettingsAvailability();
@@ -257,6 +283,8 @@ function updateSettingsAvailability() {
   const canEdit = !s.armed && !s.talkActive && !s.settingsUpdating && !c.actionBusy;
   for (const select of document.querySelectorAll("[data-button-binding]")) select.disabled = !canEdit;
   document.querySelector("#mouseEnabled").disabled = !canEdit;
+  document.querySelector("#feedbackEnabled").disabled = !canEdit;
+  document.querySelector("#feedbackStrength").disabled = !canEdit;
   for (const slider of document.querySelectorAll("[data-mouse-speed]")) slider.disabled = !canEdit;
   document.querySelector("#saveSettings").disabled = !canEdit || !settingsDirty;
   document.querySelector("#restoreSettings").disabled = !canEdit;
@@ -287,6 +315,24 @@ async function loadSettings() {
   const mouseEnabled = document.querySelector("#mouseEnabled");
   mouseEnabled.checked = Boolean(data.mouse?.enabled);
   mouseEnabled.addEventListener("change", () => {
+    settingsDirty = true;
+    document.querySelector("#settingsInfo").textContent = "未保存の変更があります。";
+    updateSettingsAvailability();
+  });
+  const feedbackEnabled = document.querySelector("#feedbackEnabled");
+  feedbackEnabled.checked = Boolean(data.feedback?.enabled);
+  feedbackEnabled.addEventListener("change", () => {
+    settingsDirty = true;
+    document.querySelector("#settingsInfo").textContent = "未保存の変更があります。";
+    updateSettingsAvailability();
+  });
+  const feedbackStrength = document.querySelector("#feedbackStrength");
+  const feedbackStrengthValue = document.querySelector("#feedbackStrengthValue");
+  feedbackStrength.value = data.feedback?.strength ?? 5;
+  const refreshFeedbackStrength = () => { feedbackStrengthValue.value = `${feedbackStrength.value} / 5`; };
+  refreshFeedbackStrength();
+  feedbackStrength.addEventListener("input", () => {
+    refreshFeedbackStrength();
     settingsDirty = true;
     document.querySelector("#settingsInfo").textContent = "未保存の変更があります。";
     updateSettingsAvailability();
@@ -331,6 +377,10 @@ document.querySelector("#saveSettings").onclick = async () => {
           enabled:document.querySelector("#mouseEnabled").checked,
           stickSpeed:Number(document.querySelector("#stickSpeed").value),
           sensorSensitivity:Number(document.querySelector("#sensorSensitivity").value)
+        },
+        feedback:{
+          enabled:document.querySelector("#feedbackEnabled").checked,
+          strength:Number(document.querySelector("#feedbackStrength").value)
         }
       })
     });
@@ -375,6 +425,22 @@ document.querySelector("#restoreFile").onchange = async event => {
 };
 document.querySelector("#arm").onclick = () => post("/api/arm");
 document.querySelector("#disarm").onclick = () => post("/api/disarm");
+document.querySelector("#testFeedback").onclick = async () => {
+  const button = document.querySelector("#testFeedback");
+  const info = document.querySelector("#feedbackLast");
+  button.disabled = true;
+  info.textContent = "振動を送信中…";
+  try {
+    const response = await fetch("/api/feedback/test", { method:"POST" });
+    const result = await response.json();
+    if (!response.ok || !result.ok) throw new Error(result.message ?? "振動できませんでした");
+    info.textContent = "テスト振動を送信しました。";
+  } catch (error) {
+    info.textContent = error.message;
+  } finally {
+    button.disabled = !latestPayload?.controller?.feedback?.hapticsReady;
+  }
+};
 document.querySelector("#connectJoycon").onclick = async () => {
   const button = document.querySelector("#connectJoycon");
   const info = document.querySelector("#connectInfo");

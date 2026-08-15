@@ -4,7 +4,7 @@
 
 ```text
 Joy-Con 2
-   │ Bluetooth
+   │ Bluetooth input / haptics
    ▼
 apps/joycon2/bridge/native/main.swift
    │ JSON Lines
@@ -13,9 +13,13 @@ apps/joycon2/bridge/server.mjs
    │ SSE 127.0.0.1:8787
    ▼
 apps/joycon2/controller
-   │ Safety + semantic-ish actions
+   │ Safety + semantic-ish actions + feedback
    ▼
 macOS / Codex app
+
+Codex Stop / PermissionRequest Hook
+   │ localhost event
+   └──────────────► Controller ─► Bridge ─► Joy-Con 2 vibration
 ```
 
 ## 目標

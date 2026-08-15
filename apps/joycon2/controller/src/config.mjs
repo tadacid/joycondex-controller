@@ -64,6 +64,7 @@ const defaults = Object.freeze({
   dictationSettleMs: 1000,
   voiceKeyUrl: "http://127.0.0.1:47321",
   voiceKeyCommandTimeoutMs: 1000,
+  feedbackCommandTimeoutMs: 1000,
   draftExpiryMs: 30_000,
   actionRequiresDraft: false,
   mouse: {
@@ -76,6 +77,10 @@ const defaults = Object.freeze({
     sensorJumpThreshold: 1200,
     stickDeadzone: 0.2,
     stickSpeed: 54
+  },
+  feedback: {
+    enabled: true,
+    strength: 5
   },
   bindings: {
     talk: ["r"],
@@ -100,7 +105,8 @@ function mergeConfig(base, override) {
     ...base,
     ...override,
     bindings: { ...base.bindings, ...(override.bindings ?? {}) },
-    mouse: { ...base.mouse, ...(override.mouse ?? {}) }
+    mouse: { ...base.mouse, ...(override.mouse ?? {}) },
+    feedback: { ...base.feedback, ...(override.feedback ?? {}) }
   };
 }
 
@@ -168,9 +174,43 @@ export function validateEditableMouse(value) {
   };
 }
 
-export async function saveEditableSettings(configPath, { bindings, mouse }) {
+export function validateEditableFeedback(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value) ||
+      Object.keys(value).length !== 2 || !("enabled" in value) || !("strength" in value)) {
+    throw new Error("feedbackにはenabledとstrengthを指定してください");
+  }
+  if (typeof value.enabled !== "boolean") throw new Error("feedback.enabledは真偽値で指定してください");
+  if (!Number.isInteger(value.strength) || value.strength < 1 || value.strength > 5) {
+    throw new Error("振動の強さは1〜5の整数で指定してください");
+  }
+  return { enabled: value.enabled, strength: value.strength };
+}
+
+export function normalizeSettingsBackup(backup, currentFeedback) {
+  if (!backup || typeof backup !== "object" || Array.isArray(backup)) {
+    throw new Error("バックアップJSONが不正です");
+  }
+  const version = backup.schemaVersion;
+  const allowed = version === 1
+    ? ["schemaVersion", "exportedAt", "bindings", "mouse"]
+    : version === 2
+      ? ["schemaVersion", "exportedAt", "bindings", "mouse", "feedback"]
+      : [];
+  if (allowed.length === 0 || Object.keys(backup).some((key) => !allowed.includes(key)) ||
+      !("bindings" in backup) || !("mouse" in backup) || (version === 2 && !("feedback" in backup))) {
+    throw new Error("Codex Gripの設定バックアップではありません");
+  }
+  return {
+    bindings: backup.bindings,
+    mouse: backup.mouse,
+    feedback: version === 1 ? validateEditableFeedback(currentFeedback) : validateEditableFeedback(backup.feedback)
+  };
+}
+
+export async function saveEditableSettings(configPath, { bindings, mouse, feedback }) {
   const validatedBindings = validateEditableBindings(bindings);
   const validatedMouse = validateEditableMouse(mouse);
+  const validatedFeedback = validateEditableFeedback(feedback);
   let fileConfig = {};
   try {
     fileConfig = JSON.parse(await readFile(configPath, "utf8"));
@@ -184,12 +224,13 @@ export async function saveEditableSettings(configPath, { bindings, mouse }) {
   const nextConfig = {
     ...fileConfig,
     bindings: { ...validatedBindings, master: "plus" },
-    mouse: { ...(fileConfig.mouse ?? {}), ...validatedMouse }
+    mouse: { ...(fileConfig.mouse ?? {}), ...validatedMouse },
+    feedback: validatedFeedback
   };
   const temporaryPath = `${configPath}.tmp-${process.pid}-${Date.now()}`;
   await writeFile(temporaryPath, `${JSON.stringify(nextConfig, null, 2)}\n`, { mode: 0o600 });
   await rename(temporaryPath, configPath);
-  return { bindings: validatedBindings, mouse: validatedMouse };
+  return { bindings: validatedBindings, mouse: validatedMouse, feedback: validatedFeedback };
 }
 
 export async function loadConfig() {
@@ -229,6 +270,7 @@ export async function loadConfig() {
   if (config.mouse.stickDeadzone < 0 || config.mouse.stickDeadzone >= 1) {
     throw new Error("mouse.stickDeadzoneは0以上1未満で指定してください");
   }
+  config.feedback = validateEditableFeedback(config.feedback);
   const bindings = validateEditableBindings(Object.fromEntries(
     EDITABLE_BINDING_KEYS.map((key) => [key, config.bindings[key]])
   ));

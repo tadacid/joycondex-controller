@@ -6,8 +6,10 @@ import {
   EDITABLE_BINDING_KEYS,
   FUNCTION_OPTIONS,
   loadConfig,
+  normalizeSettingsBackup,
   saveEditableSettings,
   validateEditableBindings,
+  validateEditableFeedback,
   validateEditableMouse
 } from "./config.mjs";
 import { CursorDriver } from "./cursor-driver.mjs";
@@ -18,6 +20,7 @@ import { UIServer } from "./ui-server.mjs";
 import { VoiceKeyClient } from "./voicekey-client.mjs";
 import { BridgeLauncher } from "./bridge-launcher.mjs";
 import { BatteryMonitor } from "./battery-monitor.mjs";
+import { FeedbackClient } from "./feedback-client.mjs";
 
 const sleep = (ms) => new Promise((resolveSleep) => setTimeout(resolveSleep, ms));
 const here = dirname(fileURLToPath(import.meta.url));
@@ -65,6 +68,15 @@ const voiceKey = new VoiceKeyClient({
   timeoutMs: config.voiceKeyCommandTimeoutMs,
   dryRun: config.dryRun,
   onLog: (level, message) => log(level, message)
+});
+
+const feedback = new FeedbackClient({
+  endpoint: new URL("/feedback/rumble", config.bridgeUrl).href,
+  enabled: config.feedback.enabled,
+  strength: config.feedback.strength,
+  timeoutMs: config.feedbackCommandTimeoutMs,
+  onLog: (level, message) => log(level, message),
+  onState: scheduleStateBroadcast
 });
 
 const cursor = new CursorDriver({
@@ -218,6 +230,7 @@ function settingsPayload() {
       sensorSensitivity: config.mouse.sensorSensitivity,
       stickSpeed: config.mouse.stickSpeed
     },
+    feedback: { ...config.feedback },
     master: "plus",
     buttonOptions: BUTTON_OPTIONS,
     functionOptions: FUNCTION_OPTIONS,
@@ -227,23 +240,26 @@ function settingsPayload() {
 
 function settingsBackupPayload() {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     exportedAt: new Date().toISOString(),
     bindings: currentEditableBindings(),
     mouse: {
       enabled: Boolean(config.mouse.enabled),
       sensorSensitivity: config.mouse.sensorSensitivity,
       stickSpeed: config.mouse.stickSpeed
-    }
+    },
+    feedback: { ...config.feedback }
   };
 }
 
-async function saveSettings(requestedBindings, requestedMouse) {
+async function saveSettings(requestedBindings, requestedMouse, requestedFeedback) {
   let bindings;
   let mouse;
+  let nextFeedback;
   try {
     bindings = validateEditableBindings(requestedBindings);
     mouse = validateEditableMouse(requestedMouse);
+    nextFeedback = validateEditableFeedback(requestedFeedback);
   } catch (error) {
     return { ok: false, status: 400, message: error.message };
   }
@@ -255,15 +271,17 @@ async function saveSettings(requestedBindings, requestedMouse) {
   if (!begin.ok) return { ...begin, status: 409 };
 
   try {
-    await saveEditableSettings(configPath, { bindings, mouse });
-    const applied = machine.applySettings({ bindings, mouse });
+    await saveEditableSettings(configPath, { bindings, mouse, feedback: nextFeedback });
+    const applied = machine.applySettings({ bindings, mouse, feedback: nextFeedback });
     if (!applied.ok) throw new Error(applied.message);
-    log("info", "操作設定を保存しました", { bindings, mouse });
+    feedback.configure(nextFeedback);
+    log("info", "操作設定を保存しました", { bindings, mouse, feedback: nextFeedback });
     return {
       ok: true,
       status: 200,
       bindings,
       mouse,
+      feedback: nextFeedback,
       master: "plus",
       neutralRequired: true
     };
@@ -275,15 +293,12 @@ async function saveSettings(requestedBindings, requestedMouse) {
 }
 
 async function restoreSettings(backup) {
-  if (!backup || typeof backup !== "object" || Array.isArray(backup)) {
-    return { ok: false, status: 400, message: "バックアップJSONが不正です" };
+  try {
+    const restored = normalizeSettingsBackup(backup, config.feedback);
+    return saveSettings(restored.bindings, restored.mouse, restored.feedback);
+  } catch (error) {
+    return { ok: false, status: 400, message: error.message };
   }
-  const allowedKeys = new Set(["schemaVersion", "exportedAt", "bindings", "mouse"]);
-  const keys = Object.keys(backup);
-  if (keys.some((key) => !allowedKeys.has(key)) || backup.schemaVersion !== 1 || !("bindings" in backup) || !("mouse" in backup)) {
-    return { ok: false, status: 400, message: "Codex Gripの設定バックアップではありません" };
-  }
-  return saveSettings(backup.bindings, backup.mouse);
 }
 
 function payload() {
@@ -299,7 +314,8 @@ function payload() {
       bindings: config.bindings,
       voiceKeyOwned: voiceKey.ownsRecording,
       cursor: cursor.snapshot(),
-      battery: batteryMonitor.snapshot()
+      battery: batteryMonitor.snapshot(),
+      feedback: feedback.snapshot()
     },
     logs
   };
@@ -322,17 +338,22 @@ const ui = new UIServer({
   saveSettings,
   getSettingsBackup: settingsBackupPayload,
   restoreSettings,
+  receiveCodexEvent: (event) => feedback.notify(event.type, { eventId: event.eventId }),
+  testFeedback: () => feedback.test(),
   onLog: log
 });
 
 const bridge = new SSEClient(config.bridgeUrl, {
   onStatus: ({ connected, phase }) => {
+    feedback.setBridgeConnection(connected);
     machine.setBridgeConnection(connected);
     log(connected ? "info" : "warn", `Bridge: ${phase}`);
   },
   onMessage: (data) => {
     try {
-      machine.handleBridgeEvent(JSON.parse(data));
+      const event = JSON.parse(data);
+      feedback.handleBridgeEvent(event);
+      machine.handleBridgeEvent(event);
     } catch (error) {
       log("warn", `Bridgeイベント解析失敗: ${error.message}`);
     }
@@ -365,6 +386,7 @@ async function stop() {
   if (stateBroadcastTimer !== null) clearTimeout(stateBroadcastTimer);
   stateBroadcastTimer = null;
   machine.disarmFromUi();
+  await feedback.stop();
   await actions.enqueue("voiceKeyShutdownStop", () => voiceKey.stop()).catch((error) => {
     log("error", `終了時のVoiceKey停止失敗: ${error.message}`);
   });

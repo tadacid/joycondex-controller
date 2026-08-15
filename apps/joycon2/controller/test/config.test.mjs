@@ -6,6 +6,8 @@ import { join } from "node:path";
 import {
   saveEditableSettings,
   validateEditableBindings,
+  validateEditableFeedback,
+  normalizeSettingsBackup,
   validateEditableMouse
 } from "../src/config.mjs";
 
@@ -14,6 +16,8 @@ const validBindings = {
   taskUp:["home"], taskDown:["chat"], reasonUp:["railRightSr"], reasonDown:["railRightSl"],
   contextPrimary:[], mouseClick:["stickRight"]
 };
+const validMouse = { enabled:true, sensorSensitivity:0.4, stickSpeed:54 };
+const validFeedback = { enabled:true, strength:3 };
 
 test("同じ機能へ複数ボタンを割り当てられる", () => {
   assert.deepEqual(validateEditableBindings(validBindings), validBindings);
@@ -46,7 +50,8 @@ test("保存時は他の設定を維持してbindingsだけ原子的に更新す
   const changed = { ...validBindings, talk:["zr"] };
   await saveEditableSettings(configPath, {
     bindings: changed,
-    mouse: { enabled:true, sensorSensitivity:0.4, stickSpeed:54 }
+    mouse: validMouse,
+    feedback: validFeedback
   });
   const saved = JSON.parse(await readFile(configPath, "utf8"));
   assert.equal(saved.bridgeUrl, "http://example.test/events");
@@ -71,7 +76,36 @@ test("マウスON/OFFと2種類の速度を検証して保存する", async () =
     mouse:{ enabled:false, stickSpeed:22, sensorSensitivity:0.2, sensorSmoothing:0.35 },
     bindings:{ ...validBindings, master:"plus" }
   }));
-  await saveEditableSettings(configPath, { bindings:validBindings, mouse });
+  await saveEditableSettings(configPath, { bindings:validBindings, mouse, feedback:validFeedback });
   const saved = JSON.parse(await readFile(configPath, "utf8"));
   assert.deepEqual(saved.mouse, { ...mouse, sensorSmoothing:0.35 });
+});
+
+test("振動通知のON/OFFと強さを検証して保存する", async () => {
+  assert.deepEqual(validateEditableFeedback(validFeedback), validFeedback);
+  assert.throws(() => validateEditableFeedback({ enabled:true, strength:0 }), /1〜5/);
+  assert.throws(() => validateEditableFeedback({ enabled:"true", strength:3 }), /真偽値/);
+
+  const directory = await mkdtemp(join(tmpdir(), "codex-controller-feedback-config-"));
+  const configPath = join(directory, "config.json");
+  await writeFile(configPath, JSON.stringify({ bindings:{ ...validBindings, master:"plus" } }));
+  await saveEditableSettings(configPath, { bindings:validBindings, mouse:validMouse, feedback:{ enabled:false, strength:5 } });
+  const saved = JSON.parse(await readFile(configPath, "utf8"));
+  assert.deepEqual(saved.feedback, { enabled:false, strength:5 });
+});
+
+test("V1バックアップは現在の振動設定を補い、V2は振動設定を復元する", () => {
+  const v1 = normalizeSettingsBackup({ schemaVersion:1, bindings:validBindings, mouse:validMouse }, validFeedback);
+  assert.deepEqual(v1.feedback, validFeedback);
+  const v2 = normalizeSettingsBackup({
+    schemaVersion:2,
+    bindings:validBindings,
+    mouse:validMouse,
+    feedback:{ enabled:false, strength:2 }
+  }, validFeedback);
+  assert.deepEqual(v2.feedback, { enabled:false, strength:2 });
+  assert.throws(
+    () => normalizeSettingsBackup({ schemaVersion:1, bindings:validBindings, mouse:validMouse, feedback:validFeedback }, validFeedback),
+    /バックアップではありません/
+  );
 });

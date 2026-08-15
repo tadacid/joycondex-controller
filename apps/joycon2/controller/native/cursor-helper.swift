@@ -2,11 +2,44 @@ import ApplicationServices
 import AppKit
 import Foundation
 
-if !CGPreflightPostEventAccess() {
-    _ = CGRequestPostEventAccess()
+let eventAccessGranted = CGPreflightPostEventAccess() || CGRequestPostEventAccess()
+if !eventAccessGranted {
+    FileHandle.standardError.write(Data("マウス操作: アクセシビリティ権限がありません\n".utf8))
 }
 
 var leftButtonDown = false
+var displayBounds: [CGRect] = []
+var displayBoundsUpdatedAt = Date.distantPast
+
+func refreshDisplayBoundsIfNeeded() {
+    guard displayBounds.isEmpty || Date().timeIntervalSince(displayBoundsUpdatedAt) >= 2 else { return }
+    var count: UInt32 = 0
+    guard CGGetActiveDisplayList(0, nil, &count) == .success, count > 0 else { return }
+    var displays = [CGDirectDisplayID](repeating: 0, count: Int(count))
+    guard CGGetActiveDisplayList(count, &displays, &count) == .success else { return }
+    displayBounds = displays.prefix(Int(count)).map(CGDisplayBounds)
+    displayBoundsUpdatedAt = Date()
+}
+
+func clampedToVisibleDisplays(_ point: CGPoint) -> CGPoint {
+    refreshDisplayBoundsIfNeeded()
+    if displayBounds.contains(where: { $0.contains(point) }) { return point }
+
+    var nearest = point
+    var nearestDistance = Double.greatestFiniteMagnitude
+    for bounds in displayBounds {
+        let candidate = CGPoint(
+            x: min(max(point.x, bounds.minX), max(bounds.minX, bounds.maxX - 1)),
+            y: min(max(point.y, bounds.minY), max(bounds.minY, bounds.maxY - 1))
+        )
+        let distance = hypot(candidate.x - point.x, candidate.y - point.y)
+        if distance < nearestDistance {
+            nearest = candidate
+            nearestDistance = distance
+        }
+    }
+    return nearest
+}
 
 func copyAttribute(_ element: AXUIElement, _ name: CFString) -> CFTypeRef? {
     var value: CFTypeRef?
@@ -87,7 +120,7 @@ while let line = readLine() {
     }
 
     guard let currentEvent = CGEvent(source: nil) else { continue }
-    let current = currentEvent.location
+    let current = clampedToVisibleDisplays(currentEvent.location)
 
     if parts.count == 2, parts[0] == "button", let value = Int(parts[1]) {
         leftButtonDown = value != 0
@@ -109,10 +142,10 @@ while let line = readLine() {
           dx.isFinite,
           dy.isFinite else { continue }
 
-    let destination = CGPoint(
+    let destination = clampedToVisibleDisplays(CGPoint(
         x: current.x + dx,
         y: current.y + dy
-    )
+    ))
     guard let move = CGEvent(
         mouseEventSource: nil,
         mouseType: leftButtonDown ? .leftMouseDragged : .mouseMoved,

@@ -20,6 +20,7 @@
   "dictationSettleMs": 1000,
   "voiceKeyUrl": "http://127.0.0.1:47321",
   "voiceKeyCommandTimeoutMs": 1000,
+  "feedbackCommandTimeoutMs": 1000,
   "draftExpiryMs": 30000,
   "actionRequiresDraft": false,
   "mouse": {
@@ -32,6 +33,10 @@
     "sensorJumpThreshold": 1200,
     "stickDeadzone": 0.2,
     "stickSpeed": 54
+  },
+  "feedback": {
+    "enabled": true,
+    "strength": 5
   },
   "bindings": {
     "talk": ["r"],

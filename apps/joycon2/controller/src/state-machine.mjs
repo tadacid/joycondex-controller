@@ -197,19 +197,20 @@ export class ControllerStateMachine {
     return { ok: true };
   }
 
-  applySettings({ bindings, mouse }) {
+  applySettings({ bindings, mouse, feedback }) {
     if (!this.state.settingsUpdating) {
       return { ok: false, message: "設定保存が開始されていません" };
     }
     this.config.bindings = { ...bindings, master: "plus" };
     this.config.mouse = { ...this.config.mouse, ...mouse };
+    this.config.feedback = { ...(this.config.feedback ?? {}), ...(feedback ?? {}) };
     this.state.mouseControl.enabled = Boolean(this.config.mouse.enabled);
     this.state.settingsUpdating = false;
     this.state.neutralReady = false;
     this.previousButtons = emptyButtons();
     this.#resetMouseControl();
     this.#disable("設定変更後のニュートラル待ち");
-    this.state.lastAction = { name: "SETTINGS_UPDATED", detail: { bindings, mouse }, at: this.now() };
+    this.state.lastAction = { name: "SETTINGS_UPDATED", detail: { bindings, mouse, feedback }, at: this.now() };
     this.#emit();
     return { ok: true };
   }

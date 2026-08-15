@@ -53,10 +53,11 @@ test("画面の接続ボタンからJoy-Con接続役を起動できる", async (
 
 test("設定をJSONでバックアップし、復元APIへ渡せる", async () => {
   const backup = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     exportedAt: "2026-08-14T00:00:00.000Z",
     bindings: { talk:["r"] },
-    mouse: { enabled:true, sensorSensitivity:0.4, stickSpeed:54 }
+    mouse: { enabled:true, sensorSensitivity:0.4, stickSpeed:54 },
+    feedback: { enabled:true, strength:3 }
   };
   let restored = null;
   const ui = new UIServer({
@@ -87,6 +88,41 @@ test("設定をJSONでバックアップし、復元APIへ渡せる", async () =
     });
     assert.equal(restore.status, 200);
     assert.deepEqual(restored, backup);
+  } finally {
+    await ui.stop();
+  }
+});
+
+test("Codex Hook通知はブラウザから拒否し、ローカル中継から受け取る", async () => {
+  const received = [];
+  const ui = new UIServer({
+    host: "127.0.0.1",
+    port: 0,
+    publicDir: resolve(here, "../public"),
+    getPayload: () => ({ state: {}, controller: {}, logs: [] }),
+    arm: () => ({ ok: true }),
+    disarm: () => ({ ok: true }),
+    receiveCodexEvent: async (value) => {
+      received.push(value);
+      return { ok:true, status:202 };
+    }
+  });
+  await ui.start();
+  const port = ui.server.address().port;
+  const body = JSON.stringify({ type:"complete", eventId:"turn-1" });
+  try {
+    const accepted = await fetch(`http://127.0.0.1:${port}/api/codex-event`, {
+      method:"POST", headers:{ "Content-Type":"application/json" }, body
+    });
+    assert.equal(accepted.status, 202);
+    assert.deepEqual(received, [{ type:"complete", eventId:"turn-1" }]);
+
+    const rejected = await fetch(`http://127.0.0.1:${port}/api/codex-event`, {
+      method:"POST",
+      headers:{ "Content-Type":"application/json", Origin:`http://127.0.0.1:${port}` },
+      body
+    });
+    assert.equal(rejected.status, 403);
   } finally {
     await ui.stop();
   }
