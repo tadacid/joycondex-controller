@@ -135,6 +135,11 @@ export class MacOSActions {
     return this.keyCode(36);
   }
 
+  async activateAndSendComposer() {
+    await this.activateTarget();
+    return this.sendComposer();
+  }
+
   async clearComposer() {
     await this.keystroke("a", ["command"]);
     await sleep(80);

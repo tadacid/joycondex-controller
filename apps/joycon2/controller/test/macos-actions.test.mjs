@@ -50,6 +50,16 @@ test("推論調整直後の通常操作でもモデル選択を開かない", as
   assert.doesNotMatch(allLogs, /keystroke "m"|key code 53/);
 });
 
+test("送信時はCodexを前面へ戻してからEnterを送る", async () => {
+  const { actions, logs } = createDryActions();
+  actions.activateTarget = async () => logs.push({ level: "dry", message: "Codexを前面へ" });
+
+  await actions.activateAndSendComposer();
+
+  assert.equal(logs[0].message, "Codexを前面へ");
+  assert.match(logs[1].message, /key code 36/);
+});
+
 test("ボイスモードはControl+Option+Vを送る", async () => {
   const { actions, logs } = createDryActions();
 

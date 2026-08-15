@@ -125,7 +125,7 @@ function dispatchAction(action) {
           log("action", "TALK終了", action.detail);
           break;
         case "send":
-          await targetGuarded(() => actions.sendComposer());
+          await actions.activateAndSendComposer();
           log("action", "ACTION送信");
           break;
         case "deleteBackward":
