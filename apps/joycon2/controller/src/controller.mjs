@@ -204,7 +204,7 @@ function dispatchAction(action) {
 const machine = new ControllerStateMachine({
   config,
   onAction: dispatchAction,
-  onPointerMove: ({ dx, dy }) => cursor.move(dx, dy),
+  onPointerMove: ({ dx, dy, source }) => cursor.move(dx, dy, { wakeDisplay: source === "stick" }),
   onPointerButton: ({ down }) => cursor.button(down),
   onState: (state) => {
     latestState = state;

@@ -35,6 +35,7 @@ export class CursorDriver {
     this.startPromise = null;
     this.pendingX = 0;
     this.pendingY = 0;
+    this.pendingDisplayWake = false;
     this.flushScheduled = false;
     this.buttonDown = false;
   }
@@ -75,11 +76,12 @@ export class CursorDriver {
     this.onLog("info", "マウス操作の準備ができました");
   }
 
-  move(dx, dy) {
+  move(dx, dy, { wakeDisplay = false } = {}) {
     if (!Number.isFinite(dx) || !Number.isFinite(dy) || (dx === 0 && dy === 0)) return;
     if (this.dryRun) return;
     this.pendingX += dx;
     this.pendingY += dy;
+    this.pendingDisplayWake ||= Boolean(wakeDisplay);
     if (this.flushScheduled) return;
     this.flushScheduled = true;
     setImmediate(() => this.#flush());
@@ -108,10 +110,12 @@ export class CursorDriver {
     this.flushScheduled = false;
     const dx = this.pendingX;
     const dy = this.pendingY;
+    const wakeDisplay = this.pendingDisplayWake;
     this.pendingX = 0;
     this.pendingY = 0;
+    this.pendingDisplayWake = false;
     if (!this.child?.stdin?.writable || (dx === 0 && dy === 0)) return;
-    this.child.stdin.write(`move ${dx.toFixed(3)} ${dy.toFixed(3)}\n`);
+    this.child.stdin.write(`move ${dx.toFixed(3)} ${dy.toFixed(3)} ${wakeDisplay ? "wake" : "passive"}\n`);
   }
 
   async stop() {
@@ -119,6 +123,7 @@ export class CursorDriver {
     this.child = null;
     this.pendingX = 0;
     this.pendingY = 0;
+    this.pendingDisplayWake = false;
     if (this.buttonDown && child?.stdin?.writable) child.stdin.write("button 0\n");
     this.buttonDown = false;
     if (!child || child.killed) return;

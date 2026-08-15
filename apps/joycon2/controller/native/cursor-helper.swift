@@ -1,6 +1,7 @@
 import ApplicationServices
 import AppKit
 import Foundation
+import IOKit.pwr_mgt
 
 let eventAccessGranted = CGPreflightPostEventAccess() || CGRequestPostEventAccess()
 if !eventAccessGranted {
@@ -10,6 +11,24 @@ if !eventAccessGranted {
 var leftButtonDown = false
 var displayBounds: [CGRect] = []
 var displayBoundsUpdatedAt = Date.distantPast
+var displayWakeAssertionID: IOPMAssertionID = 0
+var displayWakeDeclaredAt = Date.distantPast
+var displayWakeWarningShown = false
+
+func declareDisplayUserActivityIfNeeded() {
+    let now = Date()
+    guard now.timeIntervalSince(displayWakeDeclaredAt) >= 1 else { return }
+    displayWakeDeclaredAt = now
+    let result = IOPMAssertionDeclareUserActivity(
+        "JoyCondex stick input" as CFString,
+        kIOPMUserActiveLocal,
+        &displayWakeAssertionID
+    )
+    if result != kIOReturnSuccess && !displayWakeWarningShown {
+        displayWakeWarningShown = true
+        FileHandle.standardError.write(Data("画面起動通知に失敗しました（\(result)）\n".utf8))
+    }
+}
 
 func refreshDisplayBoundsIfNeeded() {
     guard displayBounds.isEmpty || Date().timeIntervalSince(displayBoundsUpdatedAt) >= 2 else { return }
@@ -135,12 +154,16 @@ while let line = readLine() {
         continue
     }
 
-    guard parts.count == 3,
+    guard (parts.count == 3 || parts.count == 4),
           parts[0] == "move",
           let dx = Double(parts[1]),
           let dy = Double(parts[2]),
           dx.isFinite,
           dy.isFinite else { continue }
+
+    if parts.count == 4, parts[3] == "wake" {
+        declareDisplayUserActivityIfNeeded()
+    }
 
     let destination = clampedToVisibleDisplays(CGPoint(
         x: current.x + dx,
