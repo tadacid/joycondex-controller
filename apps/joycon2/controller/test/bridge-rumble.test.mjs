@@ -4,7 +4,7 @@ import { readFile } from "node:fs/promises";
 import { validateRumbleRequest } from "../../bridge/rumble.mjs";
 
 test("Bridgeは安全な振動要求だけを受け付ける", () => {
-  const valid = { pulses:[{ onMs:500, offMs:250 }, { onMs:500, offMs:0 }], strength:5 };
+  const valid = { pulses:[{ onMs:500, offMs:0 }], strength:5 };
   assert.deepEqual(validateRumbleRequest(valid), valid);
   assert.throws(() => validateRumbleRequest({ ...valid, strength:6 }), /1〜5/);
   assert.throws(() => validateRumbleRequest({ ...valid, pulses:[{ onMs:501, offMs:0 }] }), /40〜500/);
@@ -16,7 +16,7 @@ test("Bridgeは安全な振動要求だけを受け付ける", () => {
 });
 
 test("完了・承認待ちに使う長いpulseを安全上限内で受け付ける", () => {
-  const complete = { pulses:[{ onMs:500, offMs:250 }, { onMs:500, offMs:0 }], strength:5 };
+  const complete = { pulses:[{ onMs:500, offMs:0 }], strength:5 };
   const approval = {
     pulses:[{ onMs:500, offMs:250 }, { onMs:500, offMs:250 }, { onMs:500, offMs:0 }],
     strength:5

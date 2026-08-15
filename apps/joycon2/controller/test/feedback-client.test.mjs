@@ -6,7 +6,7 @@ function response(status = 202, payload = { ok:true, requestId:"r1" }) {
   return { ok: status >= 200 && status < 300, status, json: async () => payload };
 }
 
-test("完了は2回、承認待ちは3回の振動として送る", async () => {
+test("完了は1回、承認待ちは3回の振動として送る", async () => {
   const calls = [];
   const client = new FeedbackClient({
     endpoint:"http://127.0.0.1:8787/feedback/rumble",
@@ -18,7 +18,6 @@ test("完了は2回、承認待ちは3回の振動として送る", async () => 
   const complete = JSON.parse(calls[0].options.body);
   const approval = JSON.parse(calls[1].options.body);
   assert.deepEqual(complete.pulses, [
-    { onMs:500, offMs:250 },
     { onMs:500, offMs:0 }
   ]);
   assert.deepEqual(approval.pulses, [

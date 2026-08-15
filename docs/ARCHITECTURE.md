@@ -17,7 +17,7 @@ apps/joycon2/controller
    ▼
 macOS / Codex app
 
-Codex Stop / PermissionRequest Hook
+Codex Stop / human PermissionRequest Hook
    │ localhost event
    └──────────────► Controller ─► Bridge ─► Joy-Con 2 vibration
 ```

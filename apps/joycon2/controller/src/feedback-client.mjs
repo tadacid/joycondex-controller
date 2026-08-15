@@ -1,5 +1,5 @@
 const PATTERNS = Object.freeze({
-  complete: Object.freeze({ label: "作業完了", pulses: [{ onMs: 500, offMs: 250 }, { onMs: 500, offMs: 0 }] }),
+  complete: Object.freeze({ label: "作業完了", pulses: [{ onMs: 500, offMs: 0 }] }),
   approval: Object.freeze({ label: "承認待ち", pulses: [{ onMs: 500, offMs: 250 }, { onMs: 500, offMs: 250 }, { onMs: 500, offMs: 0 }] }),
   error: Object.freeze({ label: "エラー", pulses: [{ onMs: 500, offMs: 0 }] }),
   test: Object.freeze({ label: "テスト", pulses: [{ onMs: 500, offMs: 250 }, { onMs: 500, offMs: 250 }, { onMs: 500, offMs: 0 }] })

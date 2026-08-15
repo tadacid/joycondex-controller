@@ -1,4 +1,51 @@
 import { createHash } from "node:crypto";
+import { open } from "node:fs/promises";
+
+const TRANSCRIPT_TAIL_BYTES = 8 * 1024 * 1024;
+
+function reviewerFromInput(input) {
+  return input.approvals_reviewer
+    ?? input.reviewer
+    ?? input.approval_context?.approvals_reviewer
+    ?? null;
+}
+
+async function reviewerFromTranscript(transcriptPath, turnId) {
+  if (typeof transcriptPath !== "string" || !transcriptPath || typeof turnId !== "string" || !turnId) return null;
+
+  let file;
+  try {
+    file = await open(transcriptPath, "r");
+    const { size } = await file.stat();
+    const length = Math.min(size, TRANSCRIPT_TAIL_BYTES);
+    const buffer = Buffer.alloc(length);
+    await file.read(buffer, 0, length, size - length);
+
+    const lines = buffer.toString("utf8").split("\n");
+    for (let index = lines.length - 1; index >= 0; index -= 1) {
+      let entry;
+      try {
+        entry = JSON.parse(lines[index]);
+      } catch {
+        continue;
+      }
+      if (entry?.type === "turn_context" && entry.payload?.turn_id === turnId) {
+        return entry.payload.approvals_reviewer ?? null;
+      }
+    }
+  } catch {
+    return null;
+  } finally {
+    await file?.close().catch(() => {});
+  }
+  return null;
+}
+
+async function needsHumanApproval(input) {
+  const reviewer = reviewerFromInput(input)
+    ?? await reviewerFromTranscript(input.transcript_path, input.turn_id);
+  return reviewer === "user";
+}
 
 const chunks = [];
 let size = 0;
@@ -17,7 +64,7 @@ try {
 
 const type = input.hook_event_name === "Stop"
   ? "complete"
-  : input.hook_event_name === "PermissionRequest"
+  : input.hook_event_name === "PermissionRequest" && await needsHumanApproval(input)
     ? "approval"
     : null;
 
